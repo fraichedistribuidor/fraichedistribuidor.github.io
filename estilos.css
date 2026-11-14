@@ -499,3 +499,8 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 /* al tocar: respuesta inmediata */
 .cat:active .ring{transform:scale(.94)}
 .acard:active{transform:scale(.985)}
+
+/* frascos de un tamaño: filtro dama / caballero y lista con scroll */
+.vgen{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+#pVar .vars.muchos{max-height:420px;overflow:auto;padding:2px;overscroll-behavior:contain}
+#pVar .var[hidden]{display:none}

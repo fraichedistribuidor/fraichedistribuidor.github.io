@@ -12,6 +12,12 @@ Precios: precio público del catálogo con la misma rebaja (−$3 desde $100, �
 
 `herramientas/` guarda cómo se generó: `datos/*.py` (productos de cada sección y qué foto lleva cada uno) y `genera.py` (crea `catalogo.js` e `img/`). Para el catálogo siguiente se repite el proceso con el PDF nuevo.
 
+## Envases agrupados por tamaño
+
+En *Perfumes* y en *Envases* hay un botón por tamaño (120, 100, 60, 50, 32, 30, 20, 16, 15, 13, 12 y 10 ml). Al abrirlo se ven juntos todos los envases de esa medida: primero tus frascos (`productos.js`, fotos en `img/botellas/`) y luego los del catálogo (`catalogo.js`), con filtro Dama / Caballero. Ahí se elige el frasco, la esencia y el aroma. Los envases del catálogo ya no salen sueltos en la lista, pero el buscador sí los encuentra. Los perfumes sellados (tipo "Perfume" o "Agua de colonia") siguen apareciendo por separado.
+
+Si un envase del catálogo es el mismo que uno de tus frascos, se anota en `YA_ESTAN` (en `tienda.js`) para que no salga dos veces.
+
 ## Aromas (Genealogía 2026)
 
 `aromas.js` tiene los 934 aromas de la Guía de Tendencias Fraiche 2026: nombre de referencia, género (Dama, Caballero, Unisex), tipo de esencia (línea = tradicional, neeche = nicho, árabe, ambiental) y nota principal. La familia (cítrica, floral, gourmand…) y la frase de a qué huele se deducen de la nota principal.
@@ -45,7 +51,7 @@ En `tienda.js`, línea `const WHATSAPP = '525574348740';`: 52 (México) seguido 
 
 En `productos.js` cada producto tiene `precios: {linea: 212, neeche: 262, arabe: 242}`. Cambia el número y guarda.
 
-Los precios salieron de la lista F099 Cuautitlán (precio público) con esta rebaja: −$3 desde $100, −$2 de $30 a $99, −$1 abajo de $30, sin centavos. Fijos: 120 ml nuevo $375 (cualquier esencia, también los envases de 120 ml), 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $36 (esencia de línea). El nuevo de 32 ml usa el precio del envase 4YOU del catálogo ($132 línea).
+Los precios salieron de la lista F099 Cuautitlán (precio público) con esta rebaja: −$3 desde $100, −$2 de $30 a $99, −$1 abajo de $30, sin centavos. Fijos (esencia de línea): 120 ml nuevo $375 / relleno $290, 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $35. Neeche y árabe siempre con la rebaja de la lista (120 ml nuevo: $475 y $435). El nuevo de 32 ml usa el precio del envase 4YOU del catálogo ($132 línea).
 
 ## Poner fotos
 

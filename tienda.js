@@ -13,9 +13,9 @@ const WHATSAPP = '525574348740';
 const CATS = [
   { id: 'todo', nombre: 'Todo', h: 172, ilus: 'set', titulo: 'Todo el catálogo' },
   { id: 'aromas', nombre: 'Aromas', h: 38, ilus: 'frasco-chico', titulo: 'Aromas de la genealogía', nota: 'Busca tu perfume favorito por nombre, género o nota y pídelo en el tamaño que quieras.' },
-  { id: 'nuevo', nombre: 'Perfumes', h: 172, ilus: 'frasco', titulo: 'Perfumes', nota: 'Frasco nuevo de 16, 30, 32, 60 o 120 ml con el aroma que elijas, en esencia de línea, neeche o árabe.' },
+  { id: 'nuevo', nombre: 'Perfumes', h: 172, ilus: 'frasco', titulo: 'Perfumes', nota: 'Elige el tamaño (de 10 a 120 ml): ahí ves todos sus frascos y escoges tu aroma, en esencia de línea, neeche o árabe.' },
   { id: 'relleno', nombre: 'Rellenos', h: 38, ilus: 'relleno', titulo: 'Rellenos', nota: 'Rellenamos tu frasco de cualquier tamaño con el aroma que elijas. Cuesta menos que uno nuevo.' },
-  { id: 'envases', nombre: 'Envases', h: 172, ilus: 'frasco-grande', titulo: 'Envases de perfume', nota: 'Elige el diseño y el aroma. El precio depende del tamaño y la esencia.' },
+  { id: 'envases', nombre: 'Envases', h: 172, ilus: 'frasco-grande', titulo: 'Envases de perfume', nota: 'Toca un tamaño para ver todos sus envases juntos; luego eliges el diseño y tu aroma. El precio depende del tamaño y la esencia.' },
   { id: 'regalos', nombre: 'Regalos', h: 38, ilus: 'kit', titulo: 'Kits y regalos' },
   { id: 'bodys', nombre: 'Bodys', h: 172, ilus: 'body', titulo: 'Lociones corporales y bodys' },
   { id: 'cremas', nombre: 'Piel', h: 38, ilus: 'crema', titulo: 'Cremas y cuidado de la piel' },
@@ -46,6 +46,41 @@ const money = n => '$' + n.toLocaleString('es-MX');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const ILUS = { envases: 'frasco', regalos: 'kit', bodys: 'body', cremas: 'crema', desodorantes: 'desodorante', cabello: 'spray',
   maquillaje: 'body-glitter', colonias: 'botella', ninos: 'ninos', velas: 'vela', casa: 'difusor', accesorios: 'kit' };
+
+// género de cada frasco: tus botellas por su nombre; los envases del catálogo por su sección (Dúo = para ambos)
+const CABALLERO = ['lucha-libre', 'linea-aaa-perfumes'];
+function generoFrasco(p, v) {
+  const n = (v && v.n) || '';
+  if (/^Dama y caballero/i.test(n)) return 'Ambos';
+  if (/^Dama/.test(n) || /Woman|Abril|Her Desire|Desire/.test(n)) return 'Dama';
+  if (/^Caballero/.test(n) || /Torso Man|Marine|Legend/.test(n)) return 'Caballero';
+  if (p.genero === 'Dama' || p.genero === 'Caballero') return p.genero;
+  if (p.id === 'nicola-porcella' || CABALLERO.includes(p.id)) return 'Caballero';
+  return 'Ambos';
+}
+
+/* ---------- envases agrupados por tamaño ---------- */
+// Cada "Perfume X ml" junta tus frascos (productos.js) y todos los envases del catálogo de ese tamaño, así al tocar
+// un tamaño se ven todos sus envases juntos. Los que ya están entre tus frascos (misma botella y color) no se repiten.
+const YA_ESTAN = { 'torso-woman-man': ['Torso Man (caballero) · teal · 120 ml'], 'ice-120': ['Rosa'],
+  liliana: ['Transcendent pink 60 ml', 'Lila 60 ml', 'Rosa 60 ml', 'Rosa 30 ml', 'Melón 30 ml'], perseo: ['Turquesa', 'Índigo'],
+  'for-men': ['Cristalino turquesa', 'Humo azul', 'Esmeralda'], heel: ['Azul'], 'perfumeros-4you-vibes': ['Peace amarillo'] };
+const sinMl = s => s.replace(/\s*·?\s*\d+ ml\b/i, '').trim().replace(/^·\s*/, '');
+const minus = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const ENVASES = (window.CATALOGO || []).filter(p => p.envase && p.tipo === 'Envase de perfume');
+for (const nuevo of (window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.ml)) {
+  nuevo.var = (nuevo.var || []).map(v => ({ ...v, g: generoFrasco(nuevo, v) }));
+  for (const e of ENVASES) {
+    const vs = e.var && e.var.length ? e.var.map(v => [v, v.ml || e.envase]) : [[null, e.envase]];
+    for (const [v, ml] of vs) {
+      if (String(ml) !== nuevo.ml || (v && (YA_ESTAN[e.id] || []).includes(v.n))) continue;
+      const base = sinMl(e.nombre), resto = v ? sinMl(v.n) : '', palabra = minus(base).split(' ')[0];
+      const n = !resto ? base : minus(resto).includes(palabra) ? resto : `${base} · ${resto}`;
+      nuevo.var.push({ n, img: (v && v.img) || e.img, precios: (v && v.precios) || e.precios, g: generoFrasco(e, v), de: e.id });
+    }
+  }
+}
+const AGRUPADOS = new Set(ENVASES.map(e => e.id));
 
 // Un solo formato para todo: los productos del catálogo se adaptan al de productos.js.
 // Los de productos.js que ya vienen del catálogo con nombre y foto (kits, figuras) se quitan.
@@ -151,7 +186,7 @@ let cart = store.get('fr_cart', []).map(it => ({ v: -1, ...it }))
 // Cambia cada vez que se abre la página: novedades, productos del catálogo, aroma del día y promociones.
 const AQUA = { glow: '#1aa59a', glowInk: '#7fe3d6' }, BEIGE = { glow: '#c9b28a', glowInk: '#eadcc0' };
 const PROMOS = [
-  { ...AQUA, t: 'Tu aroma,<br><em>tu tamaño</em>', p: 'Frascos de 16, 30, 32, 60 y 120 ml en esencia de línea, neeche o árabe.', cta: 'Ver perfumes', cat: 'nuevo', img: 'img/botellas/120.webp' },
+  { ...AQUA, t: 'Tu aroma,<br><em>tu tamaño</em>', p: 'Frascos de 10 a 120 ml en esencia de línea, neeche o árabe.', cta: 'Ver perfumes', cat: 'nuevo', img: 'img/botellas/120.webp' },
   { ...BEIGE, t: 'Rellena<br><em>y ahorra</em>', p: () => `Trae tu frasco: 60 ml desde ${money(minPrice(byId['relleno-60']))}.`, cta: 'Ver rellenos', cat: 'relleno', img: 'img/botellas/60.webp' },
   { ...AQUA, t: 'Envases<br><em>de colección</em>', p: 'Más de 30 diseños para dama y caballero.', cta: 'Ver envases', cat: 'envases', img: 'img/linea-miss-3.webp' },
   { ...BEIGE, t: 'Tu casa<br><em>huele a ti</em>', p: 'Velas, difusores y aromas para el auto.', cta: 'Ver velas', cat: 'velas', img: 'img/velas-aromaticas-2.webp' },
@@ -212,7 +247,9 @@ function visibles() {
   const words = norm(q).split(/\s+/).filter(Boolean);
   return P.filter(p => {
     if (soloFavs && !favs.has(p.id)) return false;
-    if (!soloFavs && cat !== 'todo' && p.cat !== cat) return false;
+    if (!soloFavs && !words.length && AGRUPADOS.has(p.id)) return false;   // ya están dentro de "Perfume X ml"
+    const tamano = cat === 'envases' && p.cat === 'nuevo' && p.ml;           // en Envases, un botón por tamaño
+    if (!soloFavs && cat !== 'todo' && p.cat !== cat && !tamano) return false;
     const m = minPrice(p);
     if (tag === 'barato' ? !(m != null && m < 100) : tag !== 'todo' && !p.tags.includes(tag)) return false;
     if (words.length) { const t = texto(p); return words.every(w => t.includes(w) || t.replace(/\s/g, '').includes(w)); }
@@ -285,8 +322,12 @@ function openProduct(id, op = {}) {
     p.incluye && `<p><b>Incluye:</b></p><ul>${p.incluye.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`].filter(Boolean).join('');
   $('#pInfo').innerHTML = info; $('#pInfo').hidden = !info;
   $('#pVar').hidden = !p.var;
-  $('#pVar').innerHTML = p.var ? `<legend>${p.var.length > 1 ? 'Elige una opción' : 'Opción'}</legend><div class="vars">` + p.var.map((v, i) => `
-    <label class="var${v.img ? ' con-foto' : ''}"><input type="radio" name="variante" value="${i}" ${i === 0 ? 'checked' : ''}>
+  const muchos = p.var && p.var.length > 8 && p.var.some(v => v.g);
+  const leyenda = muchos ? `Elige tu frasco <small>${p.var.length} envases de ${p.ml} ml</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
+  $('#pVar').innerHTML = p.var ? `<legend>${leyenda}</legend>`
+    + (muchos ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
+    + `<div class="vars${muchos ? ' muchos' : ''}">` + p.var.map((v, i) => `
+    <label class="var${v.img ? ' con-foto' : ''}" data-g="${v.g || ''}"><input type="radio" name="variante" value="${i}" ${i === 0 ? 'checked' : ''}>
       ${v.img ? `<span class="vimg">${imgTag(v.img, v.n)}</span>` : ''}<span class="vn">${esc(v.n)}</span></label>`).join('') + '</div>' : '';
   $('#pAroma').value = '';
   $('#aromaBox').hidden = !pideAroma(p);
@@ -352,24 +393,13 @@ function renderAromas() {
 const aromaTexto = () => aromaSel ? `${aromaSel.n} (${aromaSel.g})` : $('#pAroma').value.trim();
 const pedirAroma = a => a.e === 'ambiental' ? openProduct('difusor-80', { aroma: a }) : abrirTamanos(a);
 
-/* ---------- ventana de tamaños: el aroma elegido en frasco nuevo (16, 30, 60, 120 ml) o relleno ---------- */
-const TAM = ['16', '30', '32', '60', '120'];
+/* ---------- ventana de tamaños: el aroma elegido en frasco nuevo (de 10 a 120 ml) o relleno ---------- */
+const TAM = PERF.filter(p => p.cat === 'nuevo' && p.ml && p.var && p.var.length).map(p => p.ml).sort((a, b) => a - b);
 let tA = null, tModo = 'nuevo', tMl = '60', tSel = '', tCant = 1;
-// género de cada frasco: tus botellas por su nombre; los envases del catálogo por su sección (Dúo = para ambos)
-const CABALLERO = ['lucha-libre', 'linea-aaa-perfumes'];
-function generoFrasco(p, v) {
-  const n = (v && v.n) || '';
-  if (/^Dama y caballero/i.test(n)) return 'Ambos';
-  if (/^Dama/.test(n) || /Woman|Abril|Her Desire|Desire/.test(n)) return 'Dama';
-  if (/^Caballero/.test(n) || /Torso Man|Marine|Legend/.test(n)) return 'Caballero';
-  if (p.genero === 'Dama' || p.genero === 'Caballero') return p.genero;
-  if (p.id === 'nicola-porcella' || CABALLERO.includes(p.id)) return 'Caballero';
-  return 'Ambos';
-}
-// los frascos de un tamaño: solo los envases que manejas (productos.js)
+// los frascos de un tamaño: los tuyos y los envases del catálogo de esa medida
 function frascosDe(ml) {
   const nuevo = byId['nuevo-' + ml];
-  return (nuevo && nuevo.var || []).map((v, i) => ({ id: nuevo.id, v: i, n: v.n, img: v.img, g: generoFrasco(nuevo, v), propio: true }));
+  return (nuevo && nuevo.var || []).map((v, i) => ({ id: nuevo.id, v: i, n: v.n, img: v.img, g: v.g || generoFrasco(nuevo, v), propio: !v.de }));
 }
 // los que van con el género del aroma (los "Ambos" siempre aparecen; un aroma unisex ve todos)
 const frascos = (ml, g) => {
@@ -460,6 +490,12 @@ function renderAromaRes() {
 const unitario = it => { const pr = preciosDe(byId[it.id], it.v); return pr ? pr[it.esencia] ?? null : null; };
 const lineTotal = it => { const u = unitario(it); return u == null ? null : u * it.cant; };
 const esName = id => ESENCIAS.find(e => e.id === id).nombre;
+$('#pVar').addEventListener('click', e => {
+  const b = e.target.closest('[data-vgen]'); if (!b) return;
+  const g = b.dataset.vgen;
+  document.querySelectorAll('#pVarGen button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.querySelectorAll('#pVar .var').forEach(l => { l.hidden = !(g === 'todos' || l.dataset.g === g || l.dataset.g === 'Ambos'); });
+});
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
 const total = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);

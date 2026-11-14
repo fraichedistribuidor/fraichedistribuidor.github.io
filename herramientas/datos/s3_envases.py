@@ -41,7 +41,7 @@ ENVASES = [
   dict(id='marine-abril', nombre='Marine y Abril', genero='Dúo', cont='60 ml', envase=60, pag=184,
        var=[('Flame', ''), ('Forest biome', ''), ('Turquesa', ''), ('Marine humo', ''), ('Abril rosa degradado', ''), ('Marine azul degradado', '')]),
   dict(id='torso-woman-man', nombre='Torso Woman 100 ml y Torso Man 120 ml', genero='Dúo', pag=186, envase=100,
-       desc='Torso Woman (dama, con curvas): 100 ml, desde $333. Torso Man (caballero, con pecho marcado): 120 ml, $375.',
+       desc='Torso Woman (dama, con curvas): 100 ml, desde $333. Torso Man (caballero, con pecho marcado): 120 ml, desde $375.',
        var=[('Torso Man (caballero) · negro · 120 ml', '', 120), ('Torso Man (caballero) · teal · 120 ml', '', 120),
             ('Torso Woman (dama) · rojo · 100 ml', '', 100), ('Torso Woman (dama) · turquesa · 100 ml', '', 100)]),
   dict(id='perfumeros-plastico', nombre='Perfumeros de plástico', genero='Dúo', pag=188, envase=12, desc='A donde quiera que vayas. Rellenables.',

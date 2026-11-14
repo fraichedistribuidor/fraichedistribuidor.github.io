@@ -1,19 +1,26 @@
 // Catálogo de la tienda. Puedes editar nombres y precios aquí directamente.
 // Precios = precio público de la lista F099 Cuautitlán con la rebaja:
 //   -$3 desde $100, -$2 de $30 a $99, -$1 abajo de $30, sin centavos.
-//   120 ml nuevo: $375 en cualquier esencia.
-//   Fijos: 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $36 (esencia de línea).
-// Perfumes nuevos: solo 16, 30, 60 y 120 ml (los frascos que se manejan). Rellenos: cualquier tamaño.
+//   Fijos: 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $35 (esencia de línea).
+// Perfumes nuevos: un producto por tamaño. Sus frascos son los de var (los tuyos, en img/botellas/) más todos los
+// envases del catálogo de ese tamaño (catalogo.js), que la tienda agrega sola. Rellenos: cualquier tamaño.
 // precios: linea = esencia de línea, neeche = esencia neeche, arabe = esencia árabe (solo las que existan).
 // img: foto en img/ (las botellas reales están en img/botellas/); var: diseños de frasco con su foto.
 // foto: pon el nombre del archivo que subas a tienda/fotos/ (ej. foto: 'perfume-60.jpg'); sin foto se ve el dibujo.
 // tags: popular (más pedidos), regalo (para regalo), pura (pura esencia).
 window.PRODUCTOS = [
-  {id:'nuevo-120',cat:'nuevo',nombre:'Perfume 120 ml',detalle:'Frasco nuevo',ilus:'frasco-grande',ml:'120',tags:['regalo'],precios:{linea:375,neeche:375,arabe:375},img:'img/botellas/120.webp',var:[{n:'Caballero · Torso teal',img:'img/botellas/120-caballero-torso-man-teal.webp'},{n:'Dama · Rosa',img:'img/botellas/120-dama-ice-rosa.webp'}]},
+  {id:'nuevo-120',cat:'nuevo',nombre:'Perfume 120 ml',detalle:'Frasco nuevo',ilus:'frasco-grande',ml:'120',tags:['regalo'],precios:{linea:375,neeche:475,arabe:435},img:'img/botellas/120.webp',var:[{n:'Caballero · Torso Man teal',img:'img/botellas/120-caballero-torso-man-teal.webp'},{n:'Dama · Ice rosa',img:'img/botellas/120-dama-ice-rosa.webp'}]},
+  {id:'nuevo-100',cat:'nuevo',nombre:'Perfume 100 ml',detalle:'Frasco nuevo',ilus:'frasco-grande',ml:'100',tags:[],precios:{linea:333,neeche:415,arabe:382},img:'img/botellas/100.webp'},
   {id:'nuevo-60',cat:'nuevo',nombre:'Perfume 60 ml',detalle:'Frasco nuevo',ilus:'frasco',ml:'60',tags:['popular'],precios:{linea:212,neeche:262,arabe:242},img:'img/botellas/60.webp',var:[{n:'Caballero · Perseo verde oscuro',img:'img/botellas/60-caballero-perseo-verde-oscuro.webp'},{n:'Caballero · Perseo turquesa',img:'img/botellas/60-caballero-perseo-turquesa.webp'},{n:'Caballero · Perseo azul',img:'img/botellas/60-caballero-perseo-indigo.webp'},{n:'Dama · Liliana fucsia',img:'img/botellas/60-dama-liliana-transcendent-pink.webp'},{n:'Dama · Liliana morado',img:'img/botellas/60-dama-liliana-lila.webp'},{n:'Dama · Liliana lila',img:'img/botellas/60-dama-liliana-lavanda.webp'},{n:'Dama · Liliana rosa',img:'img/botellas/60-dama-liliana-rosa.webp'}]},
-  {id:'nuevo-30',cat:'nuevo',nombre:'Perfume 30 ml',detalle:'Frasco nuevo',ilus:'frasco',ml:'30',tags:['popular'],precios:{linea:127,neeche:152,arabe:142},img:'img/botellas/30.webp',var:[{n:'Caballero · Azul',img:'img/botellas/30-caballero-for-men-humo-azul.webp'},{n:'Caballero · Turquesa',img:'img/botellas/30-caballero-for-men-turquesa.webp'},{n:'Caballero · Verde',img:'img/botellas/30-caballero-for-men-esmeralda.webp'},{n:'Dama · Zapatilla azul',img:'img/botellas/30-dama-zapatilla-azul.webp'},{n:'Dama · Liliana lila',img:'img/botellas/30-dama-liliana-lavanda.webp'},{n:'Dama · Liliana naranja',img:'img/botellas/30-dama-liliana-melon.webp'},{n:'Dama · Liliana rosa',img:'img/botellas/30-dama-liliana-rosa.webp'}]},
-  {id:'nuevo-32',cat:'nuevo',nombre:'Perfume 32 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'32',tags:[],precios:{linea:132,neeche:159,arabe:148},img:'img/botellas/32.webp',var:[{n:'Dama y caballero · Amarillo',img:'img/botellas/32-unisex-4you-peace.webp'}]},
+  {id:'nuevo-50',cat:'nuevo',nombre:'Perfume 50 ml',detalle:'Frasco nuevo',ilus:'frasco',ml:'50',tags:[],precios:{linea:186,neeche:228,arabe:211},img:'img/desire-legend.webp'},
+  {id:'nuevo-30',cat:'nuevo',nombre:'Perfume 30 ml',detalle:'Frasco nuevo',ilus:'frasco',ml:'30',tags:['popular'],precios:{linea:127,neeche:152,arabe:142},img:'img/botellas/30.webp',var:[{n:'Caballero · For Men azul',img:'img/botellas/30-caballero-for-men-humo-azul.webp'},{n:'Caballero · For Men turquesa',img:'img/botellas/30-caballero-for-men-turquesa.webp'},{n:'Caballero · For Men verde',img:'img/botellas/30-caballero-for-men-esmeralda.webp'},{n:'Dama · Zapatilla azul',img:'img/botellas/30-dama-zapatilla-azul.webp'},{n:'Dama · Liliana lila',img:'img/botellas/30-dama-liliana-lavanda.webp'},{n:'Dama · Liliana naranja',img:'img/botellas/30-dama-liliana-melon.webp'},{n:'Dama · Liliana rosa',img:'img/botellas/30-dama-liliana-rosa.webp'}]},
+  {id:'nuevo-32',cat:'nuevo',nombre:'Perfume 32 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'32',tags:[],precios:{linea:132,neeche:159,arabe:148},img:'img/botellas/32.webp',var:[{n:'Dama y caballero · 4YOU Peace amarillo',img:'img/botellas/32-unisex-4you-peace.webp'}]},
+  {id:'nuevo-20',cat:'nuevo',nombre:'Perfume 20 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'20',tags:[],precios:{linea:87,neeche:103,arabe:97},img:'img/botellas/20.webp'},
   {id:'nuevo-16',cat:'nuevo',nombre:'Perfume 16 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'16',tags:['popular'],precios:{linea:73,neeche:85,arabe:80},img:'img/botellas/16-unisex.webp',var:[{n:'Dama y caballero · Blanco',img:'img/botellas/16-unisex.webp'}]},
+  {id:'nuevo-15',cat:'nuevo',nombre:'Perfume 15 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'15',tags:[],precios:{linea:68,neeche:80,arabe:75},img:'img/perfumeros-vidrio-1.webp'},
+  {id:'nuevo-13',cat:'nuevo',nombre:'Perfume 13 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'13',tags:[],precios:{linea:60,neeche:70,arabe:66},img:'img/rollets.webp'},
+  {id:'nuevo-12',cat:'nuevo',nombre:'Perfume 12 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'12',tags:[],precios:{linea:55,neeche:65,arabe:61},img:'img/perfumeros-plastico-1.webp'},
+  {id:'nuevo-10',cat:'nuevo',nombre:'Perfume 10 ml',detalle:'Frasco nuevo',ilus:'frasco-chico',ml:'10',tags:[],precios:{linea:39,neeche:46,arabe:43},img:'img/perfumeros-vidrio-2.webp'},
   {id:'kit-for-you',cat:'nuevo',nombre:'Kit For You',detalle:'Kit de regalo',ilus:'kit',tags:['regalo'],precios:{linea:402,neeche:512,arabe:468}},
   {id:'set-destilados',cat:'nuevo',nombre:'Set destilados',detalle:'Set de regalo',ilus:'set',tags:['regalo'],precios:{linea:507,neeche:634,arabe:583}},
   {id:'capibara-pulpos',cat:'nuevo',nombre:'Capibara / Pulpos',detalle:'Perfume con figura',ilus:'figura',tags:['regalo'],precios:{linea:177,neeche:219}},
@@ -24,7 +31,7 @@ window.PRODUCTOS = [
   {id:'relleno-32',cat:'relleno',nombre:'Relleno 32 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'32',tags:[],precios:{linea:78,neeche:104,arabe:94},img:'img/botellas/32.webp'},
   {id:'relleno-30',cat:'relleno',nombre:'Relleno 30 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'30',tags:['popular'],precios:{linea:71,neeche:96,arabe:86},img:'img/botellas/30.webp'},
   {id:'relleno-20',cat:'relleno',nombre:'Relleno 20 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'20',tags:[],precios:{linea:49,neeche:66,arabe:59},img:'img/botellas/20.webp'},
-  {id:'relleno-16',cat:'relleno',nombre:'Relleno 16 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'16',tags:['popular'],precios:{linea:36,neeche:47,arabe:42},img:'img/botellas/16-unisex.webp'},
+  {id:'relleno-16',cat:'relleno',nombre:'Relleno 16 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'16',tags:['popular'],precios:{linea:35,neeche:47,arabe:42},img:'img/botellas/16-unisex.webp'},
   {id:'relleno-15',cat:'relleno',nombre:'Relleno 15 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'15',tags:[],precios:{linea:35,neeche:47,arabe:42},img:'img/perfumeros-vidrio-1.webp'},
   {id:'relleno-13pe',cat:'relleno',nombre:'Relleno 13 ml pura esencia',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'13',tags:['pura'],precios:{linea:82,neeche:114,arabe:101},img:'img/rollets.webp'},
   {id:'relleno-13',cat:'relleno',nombre:'Relleno 13 ml',detalle:'Rellenamos tu frasco',ilus:'relleno',ml:'13',tags:[],precios:{linea:28,neeche:38,arabe:34},img:'img/rollets.webp'},
