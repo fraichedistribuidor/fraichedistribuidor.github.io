@@ -67,7 +67,13 @@ const YA_ESTAN = { 'torso-woman-man': ['Torso Man (caballero) · teal · 120 ml'
   'for-men': ['Cristalino turquesa', 'Humo azul', 'Esmeralda'], heel: ['Azul'], 'perfumeros-4you-vibes': ['Peace amarillo'] };
 const sinMl = s => s.replace(/\s*·?\s*\d+ ml\b/i, '').trim().replace(/^·\s*/, '');
 const minus = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-const ENVASES = (window.CATALOGO || []).filter(p => p.envase && p.tipo === 'Envase de perfume');
+// Todos los envases van con su tamaño (también Copa, Pulpy, Capibu, Human, Mystic Vibrations y Lucha libre, que son
+// rellenables y se venden como nuevos), menos Nicola Porcella, que va por aparte.
+const APARTE = ['nicola-porcella'];
+const TAMANOS = new Set((window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.ml).map(p => +p.ml));
+const tamanoDe = (e, v) => +((v && v.ml) || e.envase);
+const ENVASES = (window.CATALOGO || []).filter(p => p.envase && !APARTE.includes(p.id)
+  && (p.var && p.var.length ? p.var.some(v => TAMANOS.has(tamanoDe(p, v))) : TAMANOS.has(p.envase)));
 for (const nuevo of (window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.ml)) {
   nuevo.var = (nuevo.var || []).map(v => ({ ...v, g: generoFrasco(nuevo, v) }));
   for (const e of ENVASES) {
@@ -81,6 +87,26 @@ for (const nuevo of (window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.
   }
 }
 const AGRUPADOS = new Set(ENVASES.map(e => e.id));
+
+/* ---------- relleno a tu medida: el cliente trae su frasco de cualquier marca, desde 10 ml ---------- */
+// El precio sale de los rellenos de la lista: entre dos tamaños se reparte en proporción; arriba de 120 ml, al precio por ml del de 120.
+const ML_MIN = 10, ML_MAX = 250;
+const RELL = (window.PRODUCTOS || []).filter(p => p.cat === 'relleno' && p.ml && !p.medida && !p.tags.includes('pura'))
+  .map(p => ({ ml: +p.ml, pr: p.precios })).sort((a, b) => a.ml - b.ml);
+function precioMedida(ml) {
+  const out = {};
+  for (const e of ['linea', 'neeche', 'arabe']) {
+    const r = RELL.filter(x => x.pr[e] != null); if (!r.length) continue;
+    const hi = r.find(x => x.ml >= ml), lo = [...r].reverse().find(x => x.ml <= ml);
+    out[e] = !hi ? Math.round(ml * lo.pr[e] / lo.ml) : !lo || lo.ml === hi.ml ? hi.pr[e]
+      : Math.round(lo.pr[e] + (hi.pr[e] - lo.pr[e]) * (ml - lo.ml) / (hi.ml - lo.ml));
+  }
+  return out;
+}
+for (const p of (window.PRODUCTOS || []).filter(p => p.medida)) {
+  p.var = Array.from({ length: ML_MAX - ML_MIN + 1 }, (_, i) => ({ n: `${ML_MIN + i} ml`, ml: ML_MIN + i, precios: precioMedida(ML_MIN + i) }));
+  p.precios = p.var[0].precios;
+}
 
 // Un solo formato para todo: los productos del catálogo se adaptan al de productos.js.
 // Los de productos.js que ya vienen del catálogo con nombre y foto (kits, figuras) se quitan.
@@ -267,7 +293,7 @@ function badgeOf(p) {
 function card(p, i = 0) {
   const c = catOf(p.cat), m = minPrice(p);
   const desde = (p.precios && Object.keys(p.precios).length > 1) || varias(p);
-  const sub = p.var && p.var.length > 1 ? `${p.detalle ? p.detalle + ' · ' : ''}${p.var.length} opciones` : p.detalle;
+  const sub = p.medida ? p.detalle : p.var && p.var.length > 1 ? `${p.detalle ? p.detalle + ' · ' : ''}${p.var.length} opciones` : p.detalle;
   return `<article class="card${p.img || p.foto ? ' con-foto' : ''}" style="--h:${c.h};--i:${i % PAGINA}">
     <button class="media" data-open="${p.id}" aria-label="Ver ${esc(p.nombre)}">${art(p, -1)}</button>
     ${badgeOf(p)}
@@ -312,19 +338,22 @@ function setCat(id, scroll) {
 /* ---------- producto ---------- */
 let actual = null, cant = 1, vSel = -1;
 function openProduct(id, op = {}) {
-  const p = byId[id], c = catOf(p.cat); actual = p; cant = 1; vSel = p.var ? 0 : -1;
+  const p = byId[id], c = catOf(p.cat); actual = p; cant = 1; vSel = p.medida ? 30 - ML_MIN : p.var ? 0 : -1;
   aromaSel = null; if (op.aroma) aromaGen = 'todos';
   const dlg = $('#dlgProducto');
   dlg.style.setProperty('--h', c.h);
   $('#pNombre').textContent = p.nombre;
-  $('#pDetalle').textContent = p.cat === 'relleno' ? `${p.detalle}. Trae tu frasco de ${p.ml} ml.` : (p.detalle || '');
+  $('#pDetalle').textContent = p.cat === 'relleno' && p.ml ? `${p.detalle}. Trae tu frasco de ${p.ml} ml.` : p.medida ? `${p.detalle}. Lo rellenamos con el aroma que elijas.` : (p.detalle || '');
   const info = [p.notas && `<p><b>Notas:</b> ${esc(p.notas)}</p>`, p.desc && `<p>${esc(p.desc)}</p>`,
     p.incluye && `<p><b>Incluye:</b></p><ul>${p.incluye.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`].filter(Boolean).join('');
   $('#pInfo').innerHTML = info; $('#pInfo').hidden = !info;
   $('#pVar').hidden = !p.var;
   const muchos = p.var && p.var.length > 8 && p.var.some(v => v.g);
   const leyenda = muchos ? `Elige tu frasco <small>${p.var.length} envases de ${p.ml} ml</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
-  $('#pVar').innerHTML = p.var ? `<legend>${leyenda}</legend>`
+  $('#pVar').innerHTML = p.medida ? `<legend>¿Cuántos ml tiene tu frasco?</legend>
+    <div class="medida"><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
+    <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>`
+  : p.var ? `<legend>${leyenda}</legend>`
     + (muchos ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
     + `<div class="vars${muchos ? ' muchos' : ''}">` + p.var.map((v, i) => `
     <label class="var${v.img ? ' con-foto' : ''}" data-g="${v.g || ''}"><input type="radio" name="variante" value="${i}" ${i === 0 ? 'checked' : ''}>
@@ -420,7 +449,7 @@ function abrirTamanos(a) {
 function renderTamanos() {
   const a = tA;
   document.querySelectorAll('#tModo button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tmodo === tModo));
-  const lista = tModo === 'nuevo' ? TAM : PERF.filter(p => p.cat === 'relleno' && p.precios[a.e] != null).map(p => p.id.replace('relleno-', ''));
+  const lista = tModo === 'nuevo' ? TAM : PERF.filter(p => p.cat === 'relleno' && !p.medida && p.precios[a.e] != null).map(p => p.id.replace('relleno-', ''));
   if (!lista.includes(tMl)) tMl = lista.includes('60') ? '60' : lista[0];
   $('#tSizes').className = 'tsizes' + (tModo === 'relleno' ? ' rell' : '');
   $('#tSizes').innerHTML = lista.map(ml => {
@@ -651,6 +680,14 @@ $('#q').addEventListener('input', e => {
 });
 $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') $('#productos').scrollIntoView({ behavior: 'smooth' }); });
 $('#pVar').addEventListener('change', e => { if (e.target.name === 'variante') { vSel = +e.target.value; renderVariante(); } });
+$('#pVar').addEventListener('input', e => {
+  if (e.target.id !== 'pMl') return;
+  const ml = Math.round(+e.target.value);
+  if (ml >= ML_MIN && ml <= ML_MAX) { vSel = ml - ML_MIN; renderVariante(); }
+});
+$('#pVar').addEventListener('focusout', e => {   // al salir del campo, se ajusta a la medida válida más cercana
+  if (e.target.id === 'pMl') e.target.value = ML_MIN + vSel;
+});
 $('#pOpciones').addEventListener('change', updateBuy);
 $('#pAroma').addEventListener('input', renderAromas);
 $('#pMenos').addEventListener('click', () => { cant = Math.max(1, cant - 1); updateBuy(); });

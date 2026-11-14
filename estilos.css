@@ -504,3 +504,8 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 .vgen{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
 #pVar .vars.muchos{max-height:420px;overflow:auto;padding:2px;overscroll-behavior:contain}
 #pVar .var[hidden]{display:none}
+
+/* relleno a tu medida */
+.medida{display:flex;align-items:center;gap:8px;margin:2px 0 6px}
+.medida input{width:120px;font:inherit;font-size:20px;font-weight:700;padding:10px 12px;border-radius:14px;border:1px solid var(--line,rgba(127,127,127,.35));background:var(--surface,transparent);color:inherit}
+.medida span{font-weight:700;color:var(--muted)}

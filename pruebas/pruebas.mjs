@@ -52,13 +52,13 @@ await prueba('120 ml a $375 / $475 / $435, sin Torsos, Sport ni Polo Club, y rel
   const { ctx, page, errors } = await abrir();
   const r = await page.evaluate(() => {
     const P = window.tienda.P;
-    const de120 = P.flatMap(p => [p.envase === 120 || p.ml === '120' && p.cat === 'nuevo' ? p.precios : null,
+    const de120 = P.filter(p => !p.medida).flatMap(p => [p.envase === 120 || p.ml === '120' && p.cat === 'nuevo' ? p.precios : null,
       ...(p.var || []).filter(v => v.ml === 120).map(v => v.precios)]).filter(Boolean).flatMap(o => Object.values(o));
     return {
       de120: [...new Set(de120)],
       quitados: P.filter(p => /polo|torsos-futbol|^sport$/.test(p.id)).map(p => p.id),
       frascos120: P.find(p => p.id === 'nuevo-120').var.map(v => v.n),
-      sinFoto: P.filter(p => p.cat === 'relleno' && !p.img && p.ml !== '4').map(p => p.id),
+      sinFoto: P.filter(p => p.cat === 'relleno' && !p.img && !p.medida).map(p => p.id),
     };
   });
   await page.click('[data-cat="aromas"]');
@@ -94,7 +94,7 @@ await prueba('categoría Rellenos filtra y el título cambia', async () => {
   await page.click('.cat[data-cat="relleno"]');
   const titulo = await page.textContent('#titulo'), n = await page.locator('.card').count();
   await ctx.close();
-  assert.equal(titulo, 'Rellenos'); assert.equal(n, 14);
+  assert.equal(titulo, 'Rellenos'); assert.equal(n, 13);
   for (const c of ['envases', 'velas', 'maquillaje', 'ninos', 'casa']) {
     const { ctx: x, page: pg } = await abrir();
     await pg.click(`.cat[data-cat="${c}"]`);
@@ -206,7 +206,7 @@ await prueba('buscar "212 VIP Black" abre la ventana de tamaños con frascos de 
   const rellenos = await page.locator('#tSizes .tsize').count();
   await ctx.close();
   assert.ok(nombres.includes('212 VIP Black'), nombres.join(', '));
-  assert.deepEqual(tamanos, ['10 ml', '12 ml', '13 ml', '15 ml', '16 ml', '20 ml', '30 ml', '32 ml', '50 ml', '60 ml', '100 ml', '120 ml']);
+  assert.deepEqual(tamanos, ['10 ml', '12 ml', '15 ml', '16 ml', '20 ml', '30 ml', '32 ml', '50 ml', '60 ml', '100 ml', '120 ml']);
   assert.deepEqual(colores.slice(0, 3), ['Caballero · Perseo verde oscuro', 'Caballero · Perseo turquesa', 'Caballero · Perseo azul']);
   assert.ok(colores.length > 10 && colores.every(n => !/^Dama ·|Liliana|Línea Miss/.test(n)), colores.join(', '));
   assert.ok(boton.startsWith('Agregar · $'), boton);
@@ -227,7 +227,7 @@ await prueba('perfumes nuevos: un producto por tamaño (de 120 a 10 ml); elegir 
   const nombreV = await page.evaluate(i => window.tienda.P.find(p => p.id === 'nuevo-60').var[i].n, +v);
   const ph = await page.getAttribute('#q', 'placeholder');
   await ctx.close();
-  assert.deepEqual(nombres, ['Perfume 120 ml', 'Perfume 100 ml', 'Perfume 60 ml', 'Perfume 50 ml', 'Perfume 30 ml', 'Perfume 32 ml', 'Perfume 20 ml', 'Perfume 16 ml', 'Perfume 15 ml', 'Perfume 13 ml', 'Perfume 12 ml', 'Perfume 10 ml']);
+  assert.deepEqual(nombres, ['Perfume 120 ml', 'Perfume 100 ml', 'Perfume 60 ml', 'Perfume 50 ml', 'Perfume 30 ml', 'Perfume 32 ml', 'Perfume 20 ml', 'Perfume 16 ml', 'Perfume 15 ml', 'Perfume 12 ml', 'Perfume 10 ml']);
   assert.ok(nombreV.startsWith('Dama'), nombreV);
   assert.equal(ph, 'Buscar aroma o producto');
 });
@@ -243,10 +243,35 @@ await prueba('Envases: un botón por tamaño; el de 60 ml junta todos sus envase
   await page.click('#pVar .var:visible:has-text("Bikendi · Vino")');
   const foto = await page.getAttribute('#pMedia img', 'src');
   await ctx.close();
-  assert.ok(nombres.includes('Perfume 60 ml') && !nombres.includes('Liliana') && !nombres.includes('Bikendi'), nombres.join(', '));
+  assert.ok(nombres.includes('Perfume 60 ml') && !nombres.some(n => /^(Liliana|Bikendi|Human|Lucha libre|Envase Copa|Pulpy|Capibu|Mystic)/.test(n)), nombres.join(', '));
+  assert.ok(nombres.some(n => n.startsWith('Nicola Porcella')), 'Nicola Porcella va por aparte');
   assert.ok(total > 30, `solo ${total} envases de 60 ml`);
   assert.ok(cab.length < total && cab.includes('Bikendi · Vino') && !cab.some(n => /Liliana|Kelly/.test(n)), cab.join(', '));
   assert.ok(foto.includes('bikendi'), foto);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('relleno a tu medida: escribe los ml de su frasco y el precio se calcula entre los de la lista', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.cat[data-cat="relleno"]');
+  const nombres = await page.locator('.card h3').allTextContents();
+  await page.click('.card .add[data-open="relleno-medida"]');
+  const det = await page.textContent('#pDetalle');
+  await page.fill('#pMl', '45');
+  const linea = await page.textContent('#pOpciones label:has(input[value="linea"]) > b');
+  await page.fill('#pMl', '10');
+  const diez = await page.textContent('#pOpciones label:has(input[value="linea"]) > b');
+  await page.fill('#pMl', '45');
+  await page.fill('#pAroma', 'Aroma de prueba');
+  await page.click('#pAgregar');
+  const msg = await page.evaluate(() => window.tienda.mensaje());
+  await ctx.close();
+  assert.equal(nombres[0], 'Relleno de perfume a tu medida');
+  assert.ok(!nombres.includes('Relleno 4 ml') && !nombres.includes('Relleno 13 ml'), nombres.join(', '));
+  assert.ok(!det.includes('undefined'), det);
+  assert.equal(linea, '$109');   // entre 30 ml ($71) y 50 ml ($121)
+  assert.equal(diez, '$21');     // igual que el relleno de 10 ml
+  assert.ok(msg.includes('Relleno de perfume a tu medida · 45 ml') && msg.includes('$109'), msg);
   assert.deepEqual(errors, []);
 });
 

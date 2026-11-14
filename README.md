@@ -14,9 +14,15 @@ Precios: precio público del catálogo con la misma rebaja (−$3 desde $100, �
 
 ## Envases agrupados por tamaño
 
-En *Perfumes* y en *Envases* hay un botón por tamaño (120, 100, 60, 50, 32, 30, 20, 16, 15, 13, 12 y 10 ml). Al abrirlo se ven juntos todos los envases de esa medida: primero tus frascos (`productos.js`, fotos en `img/botellas/`) y luego los del catálogo (`catalogo.js`), con filtro Dama / Caballero. Ahí se elige el frasco, la esencia y el aroma. Los envases del catálogo ya no salen sueltos en la lista, pero el buscador sí los encuentra. Los perfumes sellados (tipo "Perfume" o "Agua de colonia") siguen apareciendo por separado.
+En *Perfumes* y en *Envases* hay un botón por tamaño (120, 100, 60, 50, 32, 30, 20, 16, 15, 12 y 10 ml). Al abrirlo se ven juntos todos los envases de esa medida: primero tus frascos (`productos.js`, fotos en `img/botellas/`) y luego los del catálogo (`catalogo.js`), con filtro Dama / Caballero. Ahí se elige el frasco, la esencia y el aroma. Los envases del catálogo ya no salen sueltos en la lista, pero el buscador sí los encuentra.
 
 Si un envase del catálogo es el mismo que uno de tus frascos, se anota en `YA_ESTAN` (en `tienda.js`) para que no salga dos veces.
+
+Nicola Porcella va por aparte. Los demás envases (también Copa, Pulpy, Capibu, Human, Mystic Vibrations, Lucha libre y Línea AAA) van dentro de su tamaño; para sacar uno de los grupos, agrégalo a `APARTE` en `tienda.js`.
+
+## Relleno a tu medida
+
+En *Rellenos*, **Relleno de perfume a tu medida** es para clientes con frasco de otra marca: escriben cuántos ml tiene (de 10 a 250 ml) y el precio se calcula solo, repartido entre los dos rellenos de la lista más cercanos (por ejemplo, 45 ml en línea queda entre 30 ml a $71 y 50 ml a $121: $109). Arriba de 120 ml se cobra al precio por ml del de 120. Ya no hay rellenos fijos de 4 ni de 13 ml.
 
 ## Aromas (Genealogía 2026)
 
