@@ -173,7 +173,7 @@ function armaSlides() {
   const otros = azar(cat.filter(p => !novedades.includes(p) && minPrice(p))).slice(0, 3).map(p => slideProducto(p, 'Te va a gustar', BEIGE));
   const fav = AROMAS.filter(a => a.g === 'Dama' || a.g === 'Caballero');
   const a = fav[Math.floor(Math.random() * fav.length)];
-  const aroma = a && { ...AQUA, kick: 'Aroma del día', prod: true, t: esc(a.n), p: `${a.g} · Nota principal: ${esc(a.nota)}.${a.desc ? ` Huele ${esc(a.desc)}.` : ''}`, cta: 'Pedir este aroma', pedir: a.i,
+  const aroma = a && { ...AQUA, kick: 'Aroma del día', prod: true, t: esc(a.n), p: `Inspirado olfativamente en ${esc(a.n)} · ${a.g}`, cta: 'Pedir este aroma', pedir: a.i,
     img: `img/botellas/${a.g === 'Dama' ? '30-dama-liliana-melon' : '60-caballero-perseo-turquesa'}.webp` };
   const promos = azar(PROMOS).slice(0, 3);
   // empieza con una novedad y después se mezclan
@@ -332,9 +332,8 @@ function buscaAromas(txt, tipo, gen) {
   return AROMAS.filter(a => (tipo === 'todos' || a.e === tipo) && (gen === 'todos' || a.g === gen)
     && w.every(x => a.t.includes(x) || a.t.replace(/\s/g, '').includes(x)));
 }
-const fichaAroma = a => `<div class="ficha"><span class="fam f-${slug(a.fam)}">${esc(a.fam)}</span><small class="insp">Inspirado olfativamente en</small>
-  <b>${esc(a.n)}</b><small>${esc(a.g)} · ${TIPO_AROMA[a.e]}</small>
-  <p>Nota principal: <b>${esc(a.nota)}</b>. Huele ${esc(a.desc)}.</p></div>`;
+const fichaAroma = a => `<div class="ficha"><small class="insp">Inspirado olfativamente en</small>
+  <b>${esc(a.n)}</b><small>${esc(a.g)} · ${TIPO_AROMA[a.e]}</small></div>`;
 function renderAromas() {
   if (!actual || !pideAroma(actual)) return;
   const tipo = tipoAroma(), txt = $('#pAroma').value.trim();
@@ -342,7 +341,7 @@ function renderAromas() {
   const list = buscaAromas(txt, tipo, aromaGen);
   $('#pAromaTipo').textContent = `${AROMAS.filter(a => a.e === tipo).length} aromas en ${TIPO_AROMA[tipo].toLowerCase()}`;
   $('#pAromas').innerHTML = list.slice(0, 40).map(a => `<button type="button" class="aroma" data-aroma="${a.i}"><span class="dot f-${slug(a.fam)}"></span>
-    <span><b>${esc(a.n)}</b><small>${esc(a.g)} · ${esc(a.nota)}</small></span></button>`).join('')
+    <span><b>${esc(a.n)}</b><small>${esc(a.g)}</small></span></button>`).join('')
     + (list.length > 40 ? `<p class="small">y ${list.length - 40} más: escribe para afinar la búsqueda.</p>` : '')
     + (!list.length && txt ? `<p class="small">No está en la lista: se enviará “${esc(txt)}” como aroma.</p>` : '');
   $('#pBuscaAroma').hidden = $('#pAromas').hidden = !!aromaSel;
@@ -357,7 +356,7 @@ const pedirAroma = a => a.e === 'ambiental' ? openProduct('difusor-80', { aroma:
 const TAM = ['16', '30', '32', '60', '120'];
 let tA = null, tModo = 'nuevo', tMl = '60', tSel = '', tCant = 1;
 // género de cada frasco: tus botellas por su nombre; los envases del catálogo por su sección (Dúo = para ambos)
-const CABALLERO = ['torsos-futbol', 'lucha-libre', 'linea-aaa-perfumes', 'polo-king-perfume', 'polo-winner-perfume'];
+const CABALLERO = ['lucha-libre', 'linea-aaa-perfumes'];
 function generoFrasco(p, v) {
   const n = (v && v.n) || '';
   if (/^Dama y caballero/i.test(n)) return 'Ambos';
@@ -396,7 +395,7 @@ function renderTamanos() {
   $('#tSizes').className = 'tsizes' + (tModo === 'relleno' ? ' rell' : '');
   $('#tSizes').innerHTML = lista.map(ml => {
     const f = tModo === 'nuevo' ? frascos(ml, a.g)[0] : null, pr = precioTam(tModo, ml), pp = byId[(tModo === 'nuevo' ? 'nuevo-' : 'relleno-') + ml];
-    const foto = f ? imgTag(f.img, `Frasco ${ml} ml`) : '';
+    const foto = f ? imgTag(f.img, `Frasco ${ml} ml`) : (pp.img ? imgTag(pp.img, `Envases de ${ml} ml`) : '');
     return `<button type="button" class="tsize${ml === tMl ? ' on' : ''}" data-tml="${ml}">
       ${foto ? `<span class="timg">${foto}</span>` : ''}<b>${esc(pp.nombre.replace(/^(Perfume|Relleno) /, ''))}</b><small>${pr != null ? money(pr) : '—'}</small></button>`;
   }).join('');
@@ -426,9 +425,8 @@ $('#tAgregar').addEventListener('click', () => {
   $('#dlgTam').close();
 });
 const aromaCard = (a, i) => `<article class="acard" style="--i:${i % PAGINA}">
-  <span class="fam f-${slug(a.fam)}">${esc(a.fam)}</span><small class="insp">Inspirado olfativamente en</small>
+  <small class="insp">Inspirado olfativamente en</small>
   <h3>${esc(a.n)}</h3><span class="det">${esc(a.g)} · ${TIPO_AROMA[a.e]}</span>
-  <p>Nota principal: <b>${esc(a.nota)}</b>. Huele ${esc(a.desc)}.</p>
   <button class="pedir" data-pedir="${a.i}">Pedir este aroma</button></article>`;
 const GENEROS = ['todos', 'Dama', 'Caballero', 'Unisex'];
 function renderAromaGrid() {

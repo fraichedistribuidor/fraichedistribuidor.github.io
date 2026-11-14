@@ -359,8 +359,9 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 .f-oriental{--fc:var(--f-oriental)}.f-licor-y-cuero{--fc:var(--f-licor-y-cuero)}.f-fragancia{--fc:var(--f-fragancia)}
 .insp{font-size:11px;color:var(--muted);letter-spacing:.02em}
 .acard{position:relative;border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
-.acard h3{margin:0;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
-.acard .det{font-size:12.5px;color:var(--muted)}
+.acard h3{margin:2px 0 0;font-size:18px;line-height:1.2;overflow-wrap:anywhere}
+.acard .det{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.acard .pedir{margin-top:auto}
 .acard p{margin:4px 0 8px;font-size:13px;color:var(--muted);flex:1}
 .acard p b{color:var(--ink)}
 .pedir{position:relative;z-index:1;border:0;border-radius:99px;padding:10px 12px;font-weight:700;font-size:13.5px;

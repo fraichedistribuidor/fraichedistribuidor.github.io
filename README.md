@@ -6,7 +6,7 @@ No necesita servidor ni base de datos: son archivos que GitHub Pages publica gra
 
 ## Catálogo 2026
 
-`catalogo.js` tiene los 210 productos del Catálogo Fraiche 2026 (págs. 4 a 270) con su nombre, sus variantes (aromas, colores, diseños, tamaños), notas olfativas y foto. Las 526 fotos están en `img/`, recortadas del PDF. Se suman los 28 perfumes y rellenos por tamaño de `productos.js`: 238 en total.
+`catalogo.js` tiene los 194 productos del Catálogo Fraiche 2026 (págs. 4 a 270) con su nombre, sus variantes (aromas, colores, diseños, tamaños), notas olfativas y foto. Las 500 fotos están en `img/`, recortadas del PDF. Se suman los 28 perfumes y rellenos por tamaño de `productos.js`: 222 en total. Ya no se muestran Torsos (jersey), Sport ni la línea Polo Club, que salieron del catálogo.
 
 Precios: precio público del catálogo con la misma rebaja (−$3 desde $100, −$2 de $30 a $99, −$1 abajo de $30). Los envases de perfume se cobran según su tamaño y esencia, igual que "Perfume X ml".
 
@@ -45,7 +45,7 @@ En `tienda.js`, línea `const WHATSAPP = '525574348740';`: 52 (México) seguido 
 
 En `productos.js` cada producto tiene `precios: {linea: 212, neeche: 262, arabe: 242}`. Cambia el número y guarda.
 
-Los precios salieron de la lista F099 Cuautitlán (precio público) con esta rebaja: −$3 desde $100, −$2 de $30 a $99, −$1 abajo de $30, sin centavos. Fijos: 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $36 (esencia de línea). El nuevo de 32 ml usa el precio del envase 4YOU del catálogo ($132 línea).
+Los precios salieron de la lista F099 Cuautitlán (precio público) con esta rebaja: −$3 desde $100, −$2 de $30 a $99, −$1 abajo de $30, sin centavos. Fijos: 120 ml nuevo $375 (cualquier esencia, también los envases de 120 ml), 60 ml nuevo $212 / relleno $144, 30 ml nuevo $127 / relleno $71, 16 ml nuevo $73 / relleno $36 (esencia de línea). El nuevo de 32 ml usa el precio del envase 4YOU del catálogo ($132 línea).
 
 ## Poner fotos
 

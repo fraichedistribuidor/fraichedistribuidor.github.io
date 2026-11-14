@@ -41,9 +41,33 @@ await prueba('carga sin errores y muestra todo el catálogo', async () => {
   await page.click('#mas');
   const n2 = await page.locator('.card').count();
   await ctx.close();
-  assert.ok(total >= 220, `solo ${total} productos`);
+  assert.ok(total >= 200, `solo ${total} productos`);
   assert.equal(n, 48); assert.equal(n2, 96);
   assert.equal(conteo, `${total} productos`);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('120 ml a $375, sin Torsos, Sport ni Polo Club, y rellenos con foto de sus envases', async () => {
+  const { ctx, page, errors } = await abrir();
+  const r = await page.evaluate(() => {
+    const P = window.tienda.P;
+    const de120 = P.flatMap(p => [p.envase === 120 || p.ml === '120' && p.cat === 'nuevo' ? p.precios : null,
+      ...(p.var || []).filter(v => v.ml === 120).map(v => v.precios)]).filter(Boolean).flatMap(o => Object.values(o));
+    return {
+      de120: [...new Set(de120)],
+      quitados: P.filter(p => /polo|torsos-futbol|^sport$/.test(p.id)).map(p => p.id),
+      frascos120: P.find(p => p.id === 'nuevo-120').var.map(v => v.n),
+      sinFoto: P.filter(p => p.cat === 'relleno' && !p.img && p.ml !== '4').map(p => p.id),
+    };
+  });
+  await page.click('[data-cat="aromas"]');
+  const tarjeta = await page.textContent('.acard');
+  await ctx.close();
+  assert.deepEqual(r.de120, [375]);
+  assert.deepEqual(r.quitados, []);
+  assert.ok(r.frascos120.every(n => !/100 ml|rojo/i.test(n)), r.frascos120.join(', '));
+  assert.deepEqual(r.sinFoto, []);
+  assert.ok(!/Huele/.test(tarjeta), tarjeta);
   assert.deepEqual(errors, []);
 });
 
