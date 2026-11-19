@@ -72,10 +72,12 @@ await prueba('120 ml a $375 / $475 / $435, sin Torsos, Sport ni Polo Club, y rel
   assert.deepEqual(errors, []);
 });
 
-await prueba('sin scroll horizontal en 360, 390, 768 y 1280 px, claro y oscuro', async () => {
+await prueba('sin scroll horizontal en 360, 390, 768 y 1280 px; siempre clara aunque el celular esté en modo oscuro', async () => {
   for (const scheme of ['light', 'dark']) for (const width of [360, 390, 768, 1280]) {
     const { ctx, page } = await abrir({ width, scheme });
     const sobra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    const fondo = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    assert.equal(fondo, 'rgb(251, 250, 247)', `fondo ${fondo} en modo ${scheme}`);
     if (SHOTS && (width === 390 || width === 1280)) await page.screenshot({ path: path.join(ROOT, 'pruebas', `inicio-${width}-${scheme}.png`), fullPage: width === 1280 });
     await ctx.close();
     assert.ok(sobra <= 0, `se desborda ${sobra}px a ${width}px (${scheme})`);

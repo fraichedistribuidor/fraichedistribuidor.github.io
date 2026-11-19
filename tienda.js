@@ -210,7 +210,7 @@ let cart = store.get('fr_cart', []).map(it => ({ v: -1, ...it }))
 
 /* ---------- carrusel ---------- */
 // Cambia cada vez que se abre la página: novedades, productos del catálogo, aroma del día y promociones.
-const AQUA = { glow: '#1aa59a', glowInk: '#7fe3d6' }, BEIGE = { glow: '#c9b28a', glowInk: '#eadcc0' };
+const AQUA = { glow: '#1aa59a', glowInk: '#0b857c' }, BEIGE = { glow: '#c9b28a', glowInk: '#8a6a3c' };
 const PROMOS = [
   { ...AQUA, t: 'Tu aroma,<br><em>tu tamaño</em>', p: 'Frascos de 10 a 120 ml en esencia de línea, neeche o árabe.', cta: 'Ver perfumes', cat: 'nuevo', img: 'img/botellas/120.webp' },
   { ...BEIGE, t: 'Rellena<br><em>y ahorra</em>', p: () => `Trae tu frasco: 60 ml desde ${money(minPrice(byId['relleno-60']))}.`, cta: 'Ver rellenos', cat: 'relleno', img: 'img/botellas/60.webp' },
