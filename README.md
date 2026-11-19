@@ -24,6 +24,31 @@ Nicola Porcella va por aparte. Los demás envases (también Copa, Pulpy, Capibu,
 
 En *Rellenos*, **Relleno de perfume a tu medida** es para clientes con frasco de otra marca: escriben cuántos ml tiene (de 10 a 250 ml) y el precio se calcula solo, repartido entre los dos rellenos de la lista más cercanos (por ejemplo, 45 ml en línea queda entre 30 ml a $71 y 50 ml a $121: $109). Arriba de 120 ml se cobra al precio por ml del de 120. Ya no hay rellenos fijos de 4 ni de 13 ml.
 
+## En existencia (entrega inmediata)
+
+`existencias.js` tiene lo que ya tienes en mano (Recurso 2 · Producto terminado): bodys, cremas, colonias Disney, velas, protectores solares y más, agrupados por tipo, con su foto real y tu precio de venta (nunca el costo). Salen en la categoría **En existencia** y con la etiqueta verde "En existencia". Las fotos están en `img/existencia/`, recortadas sobre fondo blanco con `herramientas/existencia/recorta.py`.
+
+## Panel (sin tocar código)
+
+Abre `panel.html` (por ejemplo `https://romerovazquezricardorv-netizen.github.io/P-gina-web-fraiche-/panel.html`). Ahí cambias:
+- **Tu negocio**: horario, zona de entrega, punto de entrega y mapa (salen en "Cómo pedir").
+- **Agotados**: todo un producto o una sola opción; en la tienda sale "Agotado" y no se puede pedir.
+- **Precios**: cambia el precio de cualquier producto.
+- **Promociones**: salen primero en el carrusel y en la categoría Promociones.
+- **Reseñas** de tus clientes.
+
+Al terminar tocas *Descargar ajustes.js* y lo subes a GitHub (*Add file → Upload files*). El panel no cambia nada por sí solo, así que no importa si alguien más lo abre.
+
+## Otras funciones
+
+- **Test "¿Qué aroma es para ti?"**: 4 preguntas (para quién, qué le gusta, cuándo lo usa y qué esencia) y recomienda 6 aromas.
+- **Aromas parecidos**: al elegir un aroma salen otros de la misma nota o familia, del mismo género y esencia.
+- **Repetir mi último pedido** en el carrito vacío.
+- **Botón flotante de WhatsApp** y **vista previa** al compartir el link (`img/compartir.jpg`).
+- **Categorías**: arriba se ven las principales; el resto en "Más".
+- **Buscador de frascos** en los tamaños con muchos envases (por ejemplo "Liliana" en 60 ml).
+- La página siempre se ve clara, aunque el celular esté en modo oscuro.
+
 ## Aromas (Genealogía 2026)
 
 `aromas.js` tiene los 934 aromas de la Guía de Tendencias Fraiche 2026: nombre de referencia, género (Dama, Caballero, Unisex), tipo de esencia (línea = tradicional, neeche = nicho, árabe, ambiental) y nota principal. La familia (cítrica, floral, gourmand…) y la frase de a qué huele se deducen de la nota principal.
@@ -44,6 +69,9 @@ El cliente arma su carrito y toca *Enviar pedido por WhatsApp*: se abre WhatsApp
 | `estilos.css` | El diseño (claro y oscuro según el celular) |
 | `tienda.js` | Dibujos, filtros, favoritos, carrito y pedido por WhatsApp. **Arriba está tu número de WhatsApp.** |
 | `productos.js` | Perfumes y rellenos por tamaño. **Aquí cambias esos precios.** |
+| `existencias.js` | Lo que tienes en existencia, con foto real y precio de venta |
+| `ajustes.js` | Horario, agotados, precios, promociones y reseñas (se hace con `panel.html`) |
+| `panel.html` | Panel para cambiar `ajustes.js` sin tocar código |
 | `catalogo.js` | Productos del Catálogo 2026 con variantes y fotos (precios ya rebajados; se pueden editar aquí) |
 | `img/` | Fotos del catálogo |
 | `aromas.js` | Aromas de la genealogía con género y nota principal |

@@ -492,3 +492,58 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 .medida{display:flex;align-items:center;gap:8px;margin:2px 0 6px}
 .medida input{width:120px;font:inherit;font-size:20px;font-weight:700;padding:10px 12px;border-radius:14px;border:1px solid var(--line,rgba(127,127,127,.35));background:var(--surface,transparent);color:inherit}
 .medida span{font-weight:700;color:var(--muted)}
+
+/* =========================================================
+   En existencia, agotados, más categorías, buscador de frascos
+   ========================================================= */
+.badge.exist{background:#e6f6ea;color:#1d7a3a}
+.mas-cats .ring{color:var(--muted)}
+.mas-cats .ring svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.mas-cats .ring svg circle{fill:currentColor;stroke:none}
+.vbusca{width:100%;margin:0 0 8px;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-size:15px}
+.var.agotado{opacity:.45}
+.var.agotado .vn small{font-weight:600;color:var(--muted)}
+.primary:disabled{opacity:.55;cursor:not-allowed}
+
+/* aromas parecidos */
+.parecidos{margin-top:12px}
+.parecidos small{display:block;color:var(--muted);font-size:12.5px;margin-bottom:6px}
+.parecidos div{display:flex;flex-wrap:wrap;gap:6px}
+.chip-aroma{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:7px 12px;font-size:13px;font-weight:600}
+.chip-aroma:hover{border-color:var(--accent);color:var(--accent)}
+
+/* test de aroma */
+.quiz-cta{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin:0 0 24px;padding:16px 18px;border-radius:var(--r-lg);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);background:linear-gradient(135deg,var(--accent-soft),#fff)}
+.quiz-cta span:first-child{flex:1;display:flex;flex-direction:column;gap:2px}
+.quiz-cta b{font-size:16px}.quiz-cta small{color:var(--muted)}
+.qc-go{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);font-weight:800;flex:none}
+.quiz h3{margin:6px 0 12px;font-size:20px}
+.qbar{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:4px 0 6px}
+.qbar i{display:block;height:100%;background:var(--accent);border-radius:inherit;transition:width .3s var(--ease)}
+.qops{display:grid;gap:8px}
+.qop{text-align:left;padding:14px 16px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:15px}
+.qop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.qres{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}
+.qa{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface)}
+.qa b{font-size:15px;line-height:1.2}.qa small{color:var(--muted);font-size:12px;flex:1}
+.qfin{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+.qfin .mas{margin:6px 0 0}
+
+/* botón flotante de WhatsApp */
+.wa-flota{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:19;width:54px;height:54px;border-radius:50%;
+  display:grid;place-items:center;background:#25d366;color:#fff;box-shadow:0 8px 22px rgba(37,211,102,.4),0 2px 6px rgba(0,0,0,.12)}
+.wa-flota svg{width:30px;height:30px;fill:currentColor}
+@media (min-width:900px){.wa-flota{bottom:24px;right:24px}}
+
+/* tu negocio y reseñas */
+.negocio{display:grid;gap:10px;margin-top:16px}
+.negocio div{border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;background:var(--surface)}
+.negocio span{color:var(--muted);font-size:14px}
+.negocio .mas{margin:4px 0 0;text-align:center}
+.resenas{margin-top:28px}
+.res-lista{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.resena{margin:0;padding:14px 16px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface)}
+.estrellas{color:#e2a516;letter-spacing:2px}.estrellas span{color:var(--line)}
+.resena blockquote{margin:6px 0;font-size:14.5px}
+.resena figcaption{font-size:13px;color:var(--muted);font-weight:600}

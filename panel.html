@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Panel de la tienda</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="img/logo/logo-96.png">
+<style>
+  :root{--bg:#fbfaf7;--surface:#fff;--ink:#1a1a1a;--muted:#6b675f;--line:rgba(18,18,18,.1);--accent:#0b857c;--soft:#dcf2ee}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  header{display:flex;gap:12px;align-items:center;margin:8px 0 4px}
+  header img{width:44px;height:44px;border-radius:12px}
+  h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 4px}
+  .nota{color:var(--muted);font-size:14px;margin:4px 0 12px}
+  section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0}
+  label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
+  input,textarea,select{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:inherit}
+  textarea{min-height:80px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-weight:600}
+  button.pri{background:var(--accent);color:#fff;border-color:transparent;padding:12px 20px}
+  .fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .fila>*{flex:1;min-width:120px}
+  .lista{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:8px}
+  .prod{padding:10px 12px;border-bottom:1px solid var(--line)}
+  .prod:last-child{border-bottom:0}
+  .prod>label,.ops label{display:flex;gap:8px;align-items:center;font-weight:600;margin:0}
+  .ops{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 0 26px}
+  .ops label{font-weight:400;font-size:14px}
+  input[type=checkbox]{width:18px;height:18px;flex:none}
+  .item{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-top:8px}
+  .item small{color:var(--muted)}
+  .chip{display:inline-block;background:var(--soft);color:var(--accent);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;margin:2px 4px 2px 0}
+  .salida{position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--line)}
+  ol{margin:6px 0 0;padding-left:20px}
+  .ok{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="img/logo/logo-96.png" alt=""><div><h1>Panel de la tienda</h1><div class="nota" style="margin:0">Cambia horario, agotados, precios, promociones y reseñas sin tocar el código.</div></div></header>
+  <p class="nota">Este panel no cambia la página por sí solo: al terminar, descarga el archivo <b>ajustes.js</b> y súbelo a GitHub (abajo vienen los pasos). Si alguien más abre esta página, no puede cambiar nada de tu tienda.</p>
+
+  <section>
+    <h2>Tu negocio</h2>
+    <p class="nota">Se muestra en “Cómo pedir”. Lo que dejes vacío no aparece.</p>
+    <label for="horario">Horario</label><input id="horario" placeholder="Lunes a sábado de 10:00 a 19:00">
+    <label for="zona">Zona de entrega</label><input id="zona" placeholder="Entregas en Cuautitlán, Cuautitlán Izcalli y Tultitlán">
+    <label for="direccion">Dónde (punto de entrega o local)</label><input id="direccion" placeholder="Plaza Centro, local 12">
+    <label for="mapa">Enlace de Google Maps (opcional)</label><input id="mapa" placeholder="https://maps.app.goo.gl/…">
+  </section>
+
+  <section>
+    <h2>Agotados</h2>
+    <p class="nota">Marca lo que se te acabó: en la tienda sale “Agotado” y no se puede agregar al carrito. Puedes marcar todo el producto o solo una opción.</p>
+    <input id="buscaAgo" type="search" placeholder="Buscar producto: body, Liliana, vela…">
+    <div id="agoMarcados"></div>
+    <div class="lista" id="agoLista"></div>
+  </section>
+
+  <section>
+    <h2>Cambiar precios</h2>
+    <p class="nota">Escribe el precio nuevo solo en las esencias que cambian. Para productos de una sola esencia usa “Línea”.</p>
+    <input id="buscaPre" type="search" placeholder="Buscar producto para cambiarle el precio" list="prodIds">
+    <div id="preEditor"></div>
+    <div id="preLista"></div>
+  </section>
+
+  <section>
+    <h2>Promociones</h2>
+    <p class="nota">Salen primero en el carrusel y en la sección Promociones de la tienda.</p>
+    <label for="prTitulo">Título</label><input id="prTitulo" placeholder="2 rellenos de 30 ml">
+    <label for="prTexto">Texto</label><input id="prTexto" placeholder="Por $130 en esencia de línea, solo esta semana">
+    <label for="prProd">Producto (opcional)</label><input id="prProd" list="prodIds" placeholder="Escribe y elige de la lista">
+    <label for="prImg">Foto (opcional, ruta dentro de img/)</label><input id="prImg" placeholder="img/botellas/30.webp">
+    <p><button id="prAgregar">Agregar promoción</button></p>
+    <div id="prLista"></div>
+  </section>
+
+  <section>
+    <h2>Reseñas de tus clientes</h2>
+    <p class="nota">Solo reseñas reales, con permiso de tu cliente. Si no hay ninguna, la sección no aparece.</p>
+    <div class="fila"><div><label for="reNombre">Nombre</label><input id="reNombre" placeholder="Ana G."></div>
+      <div style="max-width:140px"><label for="reEstrellas">Estrellas</label><select id="reEstrellas"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div></div>
+    <label for="reTexto">Lo que dijo</label><textarea id="reTexto" placeholder="Me encantó el relleno, huele igualito y dura todo el día."></textarea>
+    <p><button id="reAgregar">Agregar reseña</button></p>
+    <div id="reLista"></div>
+  </section>
+
+  <section>
+    <h2>Guardar los cambios</h2>
+    <ol>
+      <li>Toca <b>Descargar ajustes.js</b>.</li>
+      <li>En GitHub abre tu repositorio <b>P-gina-web-fraiche-</b> y toca <b>Add file → Upload files</b>.</li>
+      <li>Arrastra el archivo <b>ajustes.js</b> que descargaste (reemplaza al anterior) y toca <b>Commit changes</b>.</li>
+      <li>En 1 o 2 minutos la tienda ya muestra los cambios.</li>
+    </ol>
+    <p class="nota">Lo que vas escribiendo también se guarda en este navegador, por si cierras la página antes de descargar.</p>
+  </section>
+
+  <div class="salida fila">
+    <button class="pri" id="descargar">Descargar ajustes.js</button>
+    <button id="copiar">Copiar el texto</button>
+    <span id="msg" class="ok"></span>
+  </div>
+</div>
+<datalist id="prodIds"></datalist>
+
+<script src="productos.js"></script>
+<script src="catalogo.js"></script>
+<script src="existencias.js"></script>
+<script src="ajustes.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+
+// todos los productos que se ven en la tienda
+const PRODS = [
+  ...(window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' || p.cat === 'relleno' || p.mostrar).filter(p => !p.medida),
+  ...(window.EXISTENCIAS || []).map(p => ({ ...p, nombre: p.nombre + ' (en existencia)' })),
+  ...(window.CATALOGO || []),
+];
+const porId = Object.fromEntries(PRODS.map(p => [p.id, p]));
+$('#prodIds').innerHTML = PRODS.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
+
+const base = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
+let A = store.get('fr_panel') || JSON.parse(JSON.stringify(base));
+const guarda = () => { store.set('fr_panel', A); $('#msg').textContent = ''; };
+
+// ---- negocio ----
+for (const k of ['horario', 'zona', 'direccion', 'mapa']) {
+  $('#' + k).value = (A.negocio || {})[k] || '';
+  $('#' + k).addEventListener('input', e => { A.negocio = { ...A.negocio, [k]: e.target.value.trim() }; guarda(); });
+}
+
+// ---- agotados ----
+const agotado = clave => A.agotados.includes(clave);
+function renderAgotados() {
+  const txt = norm($('#buscaAgo').value.trim());
+  const l = txt ? PRODS.filter(p => norm(p.nombre + ' ' + (p.var || []).map(v => v.n).join(' ')).includes(txt)).slice(0, 40) : [];
+  $('#agoLista').hidden = !l.length;
+  $('#agoLista').innerHTML = l.map(p => `<div class="prod"><label><input type="checkbox" data-ago="${esc(p.id)}" ${agotado(p.id) ? 'checked' : ''}>${esc(p.nombre)}</label>
+    ${p.var && p.var.length > 1 && !p.medida ? `<div class="ops">${p.var.map(v => { const c = p.id + ':' + v.n; return `<label><input type="checkbox" data-ago="${esc(c)}" ${agotado(c) ? 'checked' : ''}>${esc(v.n)}</label>`; }).join('')}</div>` : ''}</div>`).join('');
+  $('#agoMarcados').innerHTML = A.agotados.length ? '<p class="nota">Agotados ahora: ' + A.agotados.map(c => {
+    const [id, ...r] = c.split(':'); const p = porId[id]; return `<span class="chip">${esc((p ? p.nombre : id) + (r.length ? ' · ' + r.join(':') : ''))} <button data-quita-ago="${esc(c)}" style="padding:0 6px;border:0;background:none">×</button></span>`;
+  }).join('') + '</p>' : '';
+}
+$('#buscaAgo').addEventListener('input', renderAgotados);
+document.addEventListener('change', e => {
+  const c = e.target.dataset.ago; if (c == null) return;
+  A.agotados = e.target.checked ? [...new Set([...A.agotados, c])] : A.agotados.filter(x => x !== c); guarda(); renderAgotados();
+});
+
+// ---- precios ----
+const ESS = [['linea', 'Línea'], ['neeche', 'Neeche'], ['arabe', 'Árabe']];
+function renderPrecios() {
+  const id = $('#buscaPre').value.trim(), p = porId[id];
+  $('#preEditor').innerHTML = p ? `<div class="item" style="display:block"><b>${esc(p.nombre)}</b>
+      <small> · precio actual: ${ESS.filter(([k]) => p.precios && p.precios[k] != null).map(([k, n]) => `${n} $${p.precios[k]}`).join(' · ') || 'por opción o por confirmar'}</small>
+      <div class="fila">${ESS.map(([k, n]) => `<div><label>${n}</label><input type="number" min="0" step="1" data-pre="${k}" value="${(A.precios[id] || {})[k] ?? ''}" placeholder="${(p.precios || {})[k] ?? ''}"></div>`).join('')}</div>
+      <p><button id="preGuardar">Guardar precio</button></p></div>` : '';
+  $('#preLista').innerHTML = Object.entries(A.precios).map(([k, v]) => `<div class="item"><span><b>${esc(porId[k] ? porId[k].nombre : k)}</b><br><small>${ESS.filter(([e]) => v[e] != null).map(([e, n]) => `${n} $${v[e]}`).join(' · ')}</small></span><button data-quita-pre="${esc(k)}">Quitar</button></div>`).join('');
+}
+$('#buscaPre').addEventListener('input', renderPrecios);
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.id === 'preGuardar') {
+    const id = $('#buscaPre').value.trim(), v = {};
+    document.querySelectorAll('[data-pre]').forEach(i => { if (i.value !== '') v[i.dataset.pre] = Math.max(0, +i.value); });
+    if (Object.keys(v).length) A.precios = { ...A.precios, [id]: v }; else { const c = { ...A.precios }; delete c[id]; A.precios = c; }
+    guarda(); renderPrecios(); $('#msg').textContent = 'Precio guardado';
+  }
+  if (t.dataset.quitaPre) { const c = { ...A.precios }; delete c[t.dataset.quitaPre]; A.precios = c; guarda(); renderPrecios(); }
+  if (t.dataset.quitaAgo) { A.agotados = A.agotados.filter(x => x !== t.dataset.quitaAgo); guarda(); renderAgotados(); }
+  if (t.dataset.quitaPr != null) { A.promociones.splice(+t.dataset.quitaPr, 1); guarda(); renderPromos(); }
+  if (t.dataset.quitaRe != null) { A.resenas.splice(+t.dataset.quitaRe, 1); guarda(); renderResenas(); }
+});
+
+// ---- promociones ----
+function renderPromos() {
+  $('#prLista').innerHTML = A.promociones.map((x, i) => `<div class="item"><span><b>${esc(x.titulo)}</b><br><small>${esc(x.texto || '')}${x.producto ? ' · ' + esc(porId[x.producto] ? porId[x.producto].nombre : x.producto) : ''}</small></span><button data-quita-pr="${i}">Quitar</button></div>`).join('');
+}
+$('#prAgregar').addEventListener('click', () => {
+  const titulo = $('#prTitulo').value.trim(); if (!titulo) { $('#prTitulo').focus(); return; }
+  const x = { titulo, texto: $('#prTexto').value.trim() }, prod = $('#prProd').value.trim(), img = $('#prImg').value.trim();
+  if (prod && porId[prod]) x.producto = prod;
+  if (img) x.img = img;
+  A.promociones = [...A.promociones, x]; guarda(); renderPromos();
+  ['#prTitulo', '#prTexto', '#prProd', '#prImg'].forEach(s => { $(s).value = ''; });
+});
+
+// ---- reseñas ----
+function renderResenas() {
+  $('#reLista').innerHTML = A.resenas.map((x, i) => `<div class="item"><span>${'★'.repeat(x.estrellas || 5)} <b>${esc(x.nombre || '')}</b><br><small>${esc(x.texto)}</small></span><button data-quita-re="${i}">Quitar</button></div>`).join('');
+}
+$('#reAgregar').addEventListener('click', () => {
+  const texto = $('#reTexto').value.trim(); if (!texto) { $('#reTexto').focus(); return; }
+  A.resenas = [...A.resenas, { nombre: $('#reNombre').value.trim(), texto, estrellas: +$('#reEstrellas').value }]; guarda(); renderResenas();
+  $('#reNombre').value = ''; $('#reTexto').value = '';
+});
+
+// ---- archivo ajustes.js ----
+const archivo = () => `// Ajustes de la tienda (hechos con panel.html). Para cambiarlos, abre panel.html, edita y sube este archivo de nuevo.
+// Lo que esté vacío no se muestra en la página.
+window.AJUSTES = ${JSON.stringify(A, null, 2)};
+`;
+$('#descargar').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([archivo()], { type: 'text/javascript' }));
+  a.download = 'ajustes.js'; a.click(); URL.revokeObjectURL(a.href);
+  $('#msg').textContent = 'Listo: ahora súbelo a GitHub';
+});
+$('#copiar').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(archivo()); $('#msg').textContent = 'Copiado'; } catch (e) { $('#msg').textContent = 'No se pudo copiar; usa Descargar'; }
+});
+renderAgotados(); renderPrecios(); renderPromos(); renderResenas();
+window.panel = { archivo, get A() { return A; } };   // usado por las pruebas
+</script>
+</body>
+</html>

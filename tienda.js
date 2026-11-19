@@ -2,7 +2,9 @@
 /* =========================================================
    Distribuidor Independiente Fraiche · tienda
    Datos: productos.js (perfumes y rellenos por tamaño, window.PRODUCTOS)
-   y catalogo.js (productos del Catálogo 2026 con fotos y variantes, window.CATALOGO).
+   y catalogo.js (productos del Catálogo 2026 con fotos y variantes, window.CATALOGO),
+   existencias.js (lo que ya tienes para entrega inmediata, window.EXISTENCIAS)
+   y ajustes.js (horario, agotados, precios, promociones y reseñas; se edita con panel.html).
    Aquí: filtros, favoritos, carrito y el pedido por WhatsApp.
    ========================================================= */
 
@@ -12,6 +14,8 @@ const WHATSAPP = '525574348740';
 
 const CATS = [
   { id: 'todo', nombre: 'Todo', h: 172, ilus: 'set', titulo: 'Todo el catálogo' },
+  { id: 'existencia', nombre: 'En existencia', h: 150, ilus: 'body', titulo: 'En existencia · entrega inmediata', nota: 'Productos que ya tengo listos para entregarte hoy mismo, con foto real.' },
+  { id: 'promos', nombre: 'Promociones', h: 20, ilus: 'kit', titulo: 'Promociones y precios especiales' },
   { id: 'aromas', nombre: 'Aromas', h: 38, ilus: 'frasco-chico', titulo: 'Aromas de la genealogía', nota: 'Busca tu perfume favorito por nombre, género o nota y pídelo en el tamaño que quieras.' },
   { id: 'nuevo', nombre: 'Perfumes', h: 172, ilus: 'frasco', titulo: 'Perfumes', nota: 'Elige el tamaño (de 10 a 120 ml): ahí ves todos sus frascos y escoges tu aroma, en esencia de línea, neeche o árabe.' },
   { id: 'relleno', nombre: 'Rellenos', h: 38, ilus: 'relleno', titulo: 'Rellenos', nota: 'Rellenamos tu frasco de cualquier tamaño con el aroma que elijas. Cuesta menos que uno nuevo.' },
@@ -28,8 +32,10 @@ const CATS = [
   { id: 'casa', nombre: 'Casa y auto', h: 172, ilus: 'difusor', titulo: 'Casa y auto' },
   { id: 'accesorios', nombre: 'Accesorios', h: 38, ilus: 'kit', titulo: 'Cosmetiqueras, bolsas y más' },
 ];
+const PRINCIPALES = ['todo', 'existencia', 'promos', 'aromas', 'nuevo', 'relleno', 'envases'];
 const TAGS = [
   { id: 'todo', nombre: 'Todo' },
+  { id: 'existencia', nombre: 'En existencia' },
   { id: 'oferta', nombre: 'Precio especial' },
   { id: 'popular', nombre: 'Más pedidos' },
   { id: 'regalo', nombre: 'Para regalo' },
@@ -42,7 +48,7 @@ const ESENCIAS = [
   { id: 'arabe', nombre: 'Esencia árabe', det: 'Cálida, dulce y amaderada' },
 ];
 const $ = s => document.querySelector(s);
-const money = n => '$' + n.toLocaleString('es-MX');
+const money = n => '$' + n.toLocaleString('es-MX', n % 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const ILUS = { envases: 'frasco', regalos: 'kit', bodys: 'body', cremas: 'crema', desodorantes: 'desodorante', cabello: 'spray',
   maquillaje: 'body-glitter', colonias: 'botella', ninos: 'ninos', velas: 'vela', casa: 'difusor', accesorios: 'kit' };
@@ -110,11 +116,18 @@ for (const p of (window.PRODUCTOS || []).filter(p => p.medida)) {
 
 // Un solo formato para todo: los productos del catálogo se adaptan al de productos.js.
 // Los de productos.js que ya vienen del catálogo con nombre y foto (kits, figuras) se quitan.
-const REPETIDOS = ['kit-for-you', 'set-destilados', 'capibara-pulpos'];
+const REPETIDOS = ['kit-for-you', 'set-destilados'];
 // primero los perfumes (nuevos y rellenos), después el resto del catálogo
-const PERF = (window.PRODUCTOS || []).filter(p => (p.cat === 'nuevo' || p.cat === 'relleno') && !REPETIDOS.includes(p.id));
+const PERF = (window.PRODUCTOS || []).filter(p => (p.cat === 'nuevo' || p.cat === 'relleno' || p.mostrar) && !REPETIDOS.includes(p.id));
+const AJ = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
+// lo que ya tienes: mismo formato que el resto (precio único o por opción)
+const EXIST = (window.EXISTENCIAS || []).map(p => ({
+  ...p, existencia: true, ilus: ILUS[p.cat] || 'frasco', detalle: [p.tipo, p.cont].filter(Boolean).join(' · '),
+  precios: p.precio != null ? { linea: p.precio } : p.var && p.var.some(v => v.precio != null) ? undefined : null,
+  img: p.img || (p.var && p.var[0] && p.var[0].img), tags: ['existencia'],
+}));
 const P = [
-  ...PERF.filter(p => p.cat === 'nuevo'), ...PERF.filter(p => p.cat === 'relleno'),
+  ...PERF.filter(p => p.cat === 'nuevo'), ...PERF.filter(p => p.cat === 'relleno'), ...EXIST, ...PERF.filter(p => p.mostrar),
   ...(window.CATALOGO || []).map(p => ({
     ...p,
     detalle: [p.tipo, p.cont].filter(Boolean).join(' · '),
@@ -123,6 +136,17 @@ const P = [
   })),
 ];
 const byId = Object.fromEntries(P.map(p => [p.id, p]));
+// ajustes.js: precios cambiados y agotados (todo el producto, o 'id:Nombre de la opción')
+for (const [id, pr] of Object.entries(AJ.precios || {})) if (byId[id]) byId[id].precios = { ...(byId[id].precios || {}), ...pr };
+for (const a of AJ.agotados || []) {
+  const [id, ...resto] = String(a).split(':'), p = byId[id.trim()], vn = resto.join(':').trim();
+  if (!p) continue;
+  if (!vn) p.agotado = true;
+  else (p.var || []).filter(v => v.n.toLowerCase() === vn.toLowerCase()).forEach(v => { v.agotado = true; });
+}
+for (const p of P) if (p.var && p.var.some(v => v.agotado) && p.var.every(v => v.agotado)) p.agotado = true;
+const PROMO_IDS = new Set((AJ.promociones || []).map(x => x.producto).filter(Boolean));
+const PROMO_CATS = new Set((AJ.promociones || []).map(x => x.categoria).filter(Boolean));
 const catOf = id => CATS.find(c => c.id === id) || CATS[0];
 // precios de una variante (o del producto si no tiene variante o la variante no cambia el precio)
 const preciosDe = (p, v) => {
@@ -211,7 +235,10 @@ let cart = store.get('fr_cart', []).map(it => ({ v: -1, ...it }))
 /* ---------- carrusel ---------- */
 // Cambia cada vez que se abre la página: novedades, productos del catálogo, aroma del día y promociones.
 const AQUA = { glow: '#1aa59a', glowInk: '#0b857c' }, BEIGE = { glow: '#c9b28a', glowInk: '#8a6a3c' };
+const QUIZ_SLIDE = { ...BEIGE, kick: 'Nuevo', t: '¿Qué aroma<br><em>es para ti?</em>', p: 'Contesta 4 preguntas y te recomiendo aromas a tu gusto.', cta: 'Hacer el test', quiz: true, img: 'img/botellas/30.webp' };
 const PROMOS = [
+  { ...BEIGE, t: 'Listo<br><em>para hoy</em>', p: 'Bodys, cremas, colonias y velas en existencia, con foto real.', cta: 'Ver en existencia', cat: 'existencia', img: 'img/existencia/body250-sol-de-los-cabos.webp' },
+  { ...AQUA, t: 'Tu frasco,<br><em>tu medida</em>', p: 'Rellenamos tu frasco de cualquier marca desde 10 ml.', cta: 'Ver relleno a tu medida', open: 'relleno-medida', img: 'img/botellas/100.webp' },
   { ...AQUA, t: 'Tu aroma,<br><em>tu tamaño</em>', p: 'Frascos de 10 a 120 ml en esencia de línea, neeche o árabe.', cta: 'Ver perfumes', cat: 'nuevo', img: 'img/botellas/120.webp' },
   { ...BEIGE, t: 'Rellena<br><em>y ahorra</em>', p: () => `Trae tu frasco: 60 ml desde ${money(minPrice(byId['relleno-60']))}.`, cta: 'Ver rellenos', cat: 'relleno', img: 'img/botellas/60.webp' },
   { ...AQUA, t: 'Envases<br><em>de colección</em>', p: 'Más de 30 diseños para dama y caballero.', cta: 'Ver envases', cat: 'envases', img: 'img/linea-miss-3.webp' },
@@ -237,15 +264,21 @@ function armaSlides() {
   const aroma = a && { ...AQUA, kick: 'Aroma del día', prod: true, t: esc(a.n), p: `Inspirado olfativamente en ${esc(a.n)} · ${a.g}`, cta: 'Pedir este aroma', pedir: a.i,
     img: `img/botellas/${a.g === 'Dama' ? '30-dama-liliana-melon' : '60-caballero-perseo-turquesa'}.webp` };
   const promos = azar(PROMOS).slice(0, 3);
-  // empieza con una novedad y después se mezclan
-  SLIDES = [nov[0], ...azar([...nov.slice(1), ...otros, aroma, ...promos])].filter(Boolean);
+  // tus promociones (ajustes.js) van primero, luego lo que tienes en existencia; las novedades que aún no llegan, después
+  const mias = (AJ.promociones || []).map(x => ({ ...AQUA, kick: 'Promoción', prod: true, t: esc(x.titulo || ''), p: esc(x.texto || ''),
+    cta: 'Lo quiero', open: x.producto && byId[x.producto] ? x.producto : null, cat: x.categoria || 'promos',
+    img: x.img || (x.producto && byId[x.producto] && byId[x.producto].img) || 'img/botellas/60.webp' }));
+  const ex = azar(EXIST.filter(p => p.img && !p.agotado)).slice(0, 2).map(p => slideProducto(p, 'En existencia', BEIGE));
+  const yaHay = nov.filter(s => s.kick !== 'Próximamente'), pronto = nov.filter(s => s.kick === 'Próximamente').slice(0, 1);
+  const primero = mias[0] || ex[0] || yaHay[0] || promos[0];
+  SLIDES = [primero, ...azar([...mias.slice(1), ...ex, ...yaHay, ...otros, aroma, ...promos, QUIZ_SLIDE].filter(s => s && s !== primero)), ...pronto].filter(Boolean);
 }
 function renderHero() {
   armaSlides();
   $('#slides').innerHTML = SLIDES.map((s, i) => `
     <article class="slide${s.prod ? ' prod' : ''}" id="slide${i}" style="--glow:${s.glow};--glow-ink:${s.glowInk}" aria-roledescription="destacado" aria-label="${i + 1} de ${SLIDES.length}">
       <div class="slide-txt">${s.kick ? `<span class="kick">${s.kick}</span>` : ''}<h2>${s.t}</h2><p>${typeof s.p === 'function' ? s.p() : s.p}</p>
-        <button class="cta" ${s.open ? `data-open="${s.open}"` : s.pedir != null ? `data-pedir="${s.pedir}"` : `data-cat="${s.cat}"`}>${s.cta} <span aria-hidden="true">→</span></button></div>
+        <button class="cta" ${s.quiz ? 'data-quiz="1"' : s.open ? `data-open="${s.open}"` : s.pedir != null ? `data-pedir="${s.pedir}"` : `data-cat="${s.cat}"`}>${s.cta} <span aria-hidden="true">→</span></button></div>
       <div class="slide-art foto"><img src="${s.img}" alt="" decoding="async"${i ? ' loading="lazy"' : ''}></div>
     </article>`).join('');
   $('#dots').innerHTML = SLIDES.map((_, i) => `<button role="tab" aria-label="Destacado ${i + 1}" aria-selected="${i === 0}" data-i="${i}"></button>`).join('');
@@ -261,9 +294,12 @@ function startAutoplay() {
 }
 
 /* ---------- categorías y filtros ---------- */
+let masCats = false;
 function renderCats() {
-  $('#cats').innerHTML = CATS.map(c => `<button class="cat" style="--h:${c.h}" data-cat="${c.id}" aria-pressed="${c.id === cat && !soloFavs}">
-    <span class="ring">${ART[c.ilus]('')}</span>${c.nombre}</button>`).join('');
+  const ver = CATS.filter(c => masCats || PRINCIPALES.includes(c.id) || c.id === cat);
+  $('#cats').innerHTML = ver.map(c => `<button class="cat" style="--h:${c.h}" data-cat="${c.id}" aria-pressed="${c.id === cat && !soloFavs}">
+    <span class="ring">${ART[c.ilus]('')}</span>${c.nombre}</button>`).join('')
+    + `<button class="cat mas-cats" data-mascats="1" aria-expanded="${masCats}"><span class="ring">${masCats ? '<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>' : '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'}</span>${masCats ? 'Menos' : 'Más'}</button>`;
   $('#pills').innerHTML = TAGS.map(t => `<button class="pill" data-tag="${t.id}" aria-pressed="${t.id === tag}">${t.nombre}</button>`).join('');
 }
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -275,7 +311,9 @@ function visibles() {
     if (soloFavs && !favs.has(p.id)) return false;
     if (!soloFavs && !words.length && AGRUPADOS.has(p.id)) return false;   // ya están dentro de "Perfume X ml"
     const tamano = cat === 'envases' && p.cat === 'nuevo' && p.ml;           // en Envases, un botón por tamaño
-    if (!soloFavs && cat !== 'todo' && p.cat !== cat && !tamano) return false;
+    const especial = cat === 'existencia' ? !!p.existencia : cat === 'promos' ? p.tags.includes('oferta') || PROMO_IDS.has(p.id) || PROMO_CATS.has(p.cat) : null;
+    if (!soloFavs && especial === false) return false;
+    if (!soloFavs && especial === null && cat !== 'todo' && p.cat !== cat && !tamano) return false;
     const m = minPrice(p);
     if (tag === 'barato' ? !(m != null && m < 100) : tag !== 'todo' && !p.tags.includes(tag)) return false;
     if (words.length) { const t = texto(p); return words.every(w => t.includes(w) || t.replace(/\s/g, '').includes(w)); }
@@ -283,6 +321,9 @@ function visibles() {
   });
 }
 function badgeOf(p) {
+  if (p.agotado) return '<span class="badge dark">Agotado</span>';
+  if (p.existencia) return '<span class="badge exist">En existencia</span>';
+  if (PROMO_IDS.has(p.id)) return '<span class="badge oferta">Promoción</span>';
   if (p.prox) return '<span class="badge dark">Próximamente</span>';
   if (p.tags.includes('pura')) return '<span class="badge dark">Pura esencia</span>';
   if (p.tags.includes('oferta')) return '<span class="badge oferta">Precio especial</span>';
@@ -338,7 +379,8 @@ function setCat(id, scroll) {
 /* ---------- producto ---------- */
 let actual = null, cant = 1, vSel = -1;
 function openProduct(id, op = {}) {
-  const p = byId[id], c = catOf(p.cat); actual = p; cant = 1; vSel = p.medida ? 30 - ML_MIN : p.var ? 0 : -1;
+  const p = byId[id], c = catOf(p.cat); actual = p; cant = 1; vGen = 'todos';
+  vSel = p.medida ? 30 - ML_MIN : p.var ? Math.max(0, p.var.findIndex(v => !v.agotado)) : -1;
   aromaSel = null; if (op.aroma) aromaGen = 'todos';
   const dlg = $('#dlgProducto');
   dlg.style.setProperty('--h', c.h);
@@ -354,10 +396,11 @@ function openProduct(id, op = {}) {
     <div class="medida"><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
     <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>`
   : p.var ? `<legend>${leyenda}</legend>`
+    + (muchos ? `<input class="vbusca" id="pVarBusca" type="search" placeholder="Buscar frasco: Liliana, Perseo, Axel…" autocomplete="off" aria-label="Buscar frasco">` : '')
     + (muchos ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
     + `<div class="vars${muchos ? ' muchos' : ''}">` + p.var.map((v, i) => `
-    <label class="var${v.img ? ' con-foto' : ''}" data-g="${v.g || ''}"><input type="radio" name="variante" value="${i}" ${i === 0 ? 'checked' : ''}>
-      ${v.img ? `<span class="vimg">${imgTag(v.img, v.n)}</span>` : ''}<span class="vn">${esc(v.n)}</span></label>`).join('') + '</div>' : '';
+    <label class="var${v.img ? ' con-foto' : ''}${v.agotado ? ' agotado' : ''}" data-g="${v.g || ''}" data-n="${esc(minus(v.n))}"><input type="radio" name="variante" value="${i}" ${i === vSel ? 'checked' : ''}>
+      ${v.img ? `<span class="vimg">${imgTag(v.img, v.n)}</span>` : ''}<span class="vn">${esc(v.n)}${v.agotado ? ' <small>(agotado)</small>' : ''}</span></label>`).join('') + '</div>' : '';
   $('#pAroma').value = '';
   $('#aromaBox').hidden = !pideAroma(p);
   $('#pOpciones').innerHTML = '';
@@ -385,7 +428,9 @@ function esencia() { const r = $('#pOpciones input:checked'); return r ? r.value
 function updateBuy() {
   $('#pCant').textContent = cant;
   const pr = preciosDe(actual, vSel), u = pr ? pr[esencia()] : null;
-  $('#pAgregar').textContent = u == null ? 'Agregar · precio por confirmar' : `Agregar · ${money(u * cant)}`;
+  const x = actual.var && actual.var[vSel], ago = actual.agotado || (x && x.agotado);
+  $('#pAgregar').disabled = !!ago;
+  $('#pAgregar').textContent = ago ? 'Agotado por ahora' : u == null ? 'Agregar · precio por confirmar' : `Agregar · ${money(u * cant)}`;
   renderAromas();
 }
 
@@ -396,7 +441,7 @@ const slug = s => norm(s).replace(/[^a-z]+/g, '-');
 AROMAS.forEach(a => { a.t = norm(`${a.n} ${a.g} ${a.nota} ${a.fam} ${TIPO_AROMA[a.e]}`); });
 let aromaSel = null, aromaGen = 'todos', aGen = 'todos', aTipo = 'todos';
 // difusores y productos de casa usan esencias ambientales; lo demás, la esencia elegida
-const tipoAroma = () => actual.cat === 'casa' ? 'ambiental' : (TIPO_AROMA[esencia()] && esencia() !== 'ambiental' ? esencia() : 'linea');
+const tipoAroma = () => actual.cat === 'casa' && !(actual.var && /^Perfume/.test((actual.var[vSel] || {}).n || '')) ? 'ambiental' : (TIPO_AROMA[esencia()] && esencia() !== 'ambiental' ? esencia() : 'linea');
 function buscaAromas(txt, tipo, gen) {
   const w = norm(txt).split(/\s+/).filter(Boolean);
   return AROMAS.filter(a => (tipo === 'todos' || a.e === tipo) && (gen === 'todos' || a.g === gen)
@@ -416,7 +461,7 @@ function renderAromas() {
     + (!list.length && txt ? `<p class="small">No está en la lista: se enviará “${esc(txt)}” como aroma.</p>` : '');
   $('#pBuscaAroma').hidden = $('#pAromas').hidden = !!aromaSel;
   $('#pAromaSel').hidden = !aromaSel;
-  $('#pAromaSel').innerHTML = aromaSel ? fichaAroma(aromaSel) + '<button type="button" class="link" id="cambiarAroma">Cambiar aroma</button>' : '';
+  $('#pAromaSel').innerHTML = aromaSel ? fichaAroma(aromaSel) + '<button type="button" class="link" id="cambiarAroma">Cambiar aroma</button>' + parecidosHTML(aromaSel) : '';
   document.querySelectorAll('#pGen button').forEach(b => b.setAttribute('aria-pressed', b.dataset.gen === aromaGen));
 }
 const aromaTexto = () => aromaSel ? `${aromaSel.n} (${aromaSel.g})` : $('#pAroma').value.trim();
@@ -441,7 +486,7 @@ const prodTam = () => byId[(tModo === 'nuevo' ? 'nuevo-' : 'relleno-') + tMl];
 const precioTam = (modo, ml) => { const p = byId[(modo === 'nuevo' ? 'nuevo-' : 'relleno-') + ml]; return p && p.precios[tA.e]; };
 function abrirTamanos(a) {
   tA = a; tModo = 'nuevo'; tMl = '60'; tCant = 1; tSel = '';
-  $('#tFicha').innerHTML = fichaAroma(a);
+  $('#tFicha').innerHTML = fichaAroma(a) + parecidosHTML(a);
   renderTamanos();
   $('#dlgTam').showModal();
   $('#dlgTam').scrollTop = 0;
@@ -519,12 +564,21 @@ function renderAromaRes() {
 const unitario = it => { const pr = preciosDe(byId[it.id], it.v); return pr ? pr[it.esencia] ?? null : null; };
 const lineTotal = it => { const u = unitario(it); return u == null ? null : u * it.cant; };
 const esName = id => ESENCIAS.find(e => e.id === id).nombre;
+// filtro de frascos: género (Dama / Caballero) y texto (Liliana, Perseo…)
+let vGen = 'todos';
+function filtraFrascos() {
+  const txt = minus(($('#pVarBusca') || {}).value || '').trim();
+  document.querySelectorAll('#pVar .var').forEach(l => {
+    l.hidden = !((vGen === 'todos' || l.dataset.g === vGen || l.dataset.g === 'Ambos') && (!txt || l.dataset.n.includes(txt)));
+  });
+}
 $('#pVar').addEventListener('click', e => {
   const b = e.target.closest('[data-vgen]'); if (!b) return;
-  const g = b.dataset.vgen;
+  vGen = b.dataset.vgen;
   document.querySelectorAll('#pVarGen button').forEach(x => x.setAttribute('aria-pressed', x === b));
-  document.querySelectorAll('#pVar .var').forEach(l => { l.hidden = !(g === 'todos' || l.dataset.g === g || l.dataset.g === 'Ambos'); });
+  filtraFrascos();
 });
+$('#pVar').addEventListener('input', e => { if (e.target.id === 'pVarBusca') filtraFrascos(); });
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
 const total = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
@@ -550,6 +604,9 @@ function renderCart() {
         <div class="step"><button type="button" data-dec="${i}" aria-label="${it.cant === 1 ? 'Quitar' : 'Uno menos'}">${it.cant === 1 ? '×' : '−'}</button><output>${it.cant}</output><button type="button" data-inc="${i}" aria-label="Uno más">+</button></div></div></li>`;
   }).join('');
   $('#carritoVacio').hidden = cart.length > 0;
+  const ult = ultimoPedido();
+  $('#repetir').hidden = cart.length > 0 || !ult.length;
+  $('#repetir').textContent = `Repetir mi último pedido (${ult.reduce((a, it) => a + it.cant, 0)} productos)`;
   $('#checkout').hidden = cart.length === 0;
   $('#total').textContent = money(total()) + (porConfirmar() ? ' + por confirmar' : '');
   $('#enviar').disabled = !WHATSAPP;
@@ -624,6 +681,14 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add
 /* ---------- eventos ---------- */
 document.addEventListener('click', e => {
   const t = e.target.closest('button, a'); if (!t) return;
+  if (t.dataset.mascats) { masCats = !masCats; renderCats(); return; }
+  if (t.dataset.quiz) { abrirQuiz(); return; }
+  if (t.dataset.parecido) {
+    const a = AROMAS[+t.dataset.parecido];
+    if ($('#dlgTam').open) abrirTamanos(a); else { aromaSel = a; renderAromas(); }
+    vibra(8); return;
+  }
+  if (t.dataset.repetir) { repetirPedido(); return; }
   if (t.dataset.aroma) {
     aromaSel = AROMAS[+t.dataset.aroma];
     // frasco nuevo: se elige solo el frasco de dama o de caballero según el aroma
@@ -709,6 +774,7 @@ $('#enviar').addEventListener('click', () => {
   if (ent.envio && !ent.lugar) { toast('Escribe el lugar de entrega'); $('#cDir').focus(); return; }
   folio = nuevoFolio();
   ultimoMensaje = mensaje();
+  store.set('fr_ultimo', cart.map(it => ({ ...it })));
   abrirWhats(ultimoMensaje);
   pedidoRealizado(ent);
 });
@@ -771,7 +837,89 @@ function vuelaAlCarrito(desde) {
     { duration: 720, easing: 'cubic-bezier(.5,0,.25,1)' }).onfinish = () => { f.remove(); bump(); };
 }
 
+/* ---------- aromas parecidos: misma nota principal, o misma familia, del mismo género y esencia ---------- */
+function parecidos(a, n = 4) {
+  const mismos = AROMAS.filter(b => b !== a && b.e === a.e && (b.g === a.g || a.g === 'Unisex' || b.g === 'Unisex'));
+  const porNota = mismos.filter(b => b.nota === a.nota), porFam = mismos.filter(b => b.fam === a.fam && b.nota !== a.nota);
+  const cerca = arr => arr.sort((x, y) => Math.abs(x.i - a.i) - Math.abs(y.i - a.i));   // siempre los mismos para cada aroma
+  return [...cerca(porNota), ...cerca(porFam)].slice(0, n);
+}
+const parecidosHTML = a => {
+  const l = parecidos(a);
+  return l.length ? `<div class="parecidos"><small>Si te gusta este, prueba también:</small><div>${l.map(b =>
+    `<button type="button" class="chip-aroma" data-parecido="${b.i}">${esc(b.n)}</button>`).join('')}</div></div>` : '';
+};
+
+/* ---------- test: ¿qué aroma es para ti? ---------- */
+const QUIZ = [
+  { k: 'g', p: '¿Para quién es?', o: [['Dama', 'Para dama'], ['Caballero', 'Para caballero'], ['Unisex', 'Unisex'], ['todos', 'Me da igual']] },
+  { k: 'gusto', p: '¿Qué te gusta más?', o: [['dulce', 'Dulce: vainilla, caramelo, frutas'], ['fresco', 'Fresco: cítricos, agua, verde'],
+    ['floral', 'Floral: rosas, jazmín, flores'], ['intenso', 'Intenso: maderas, especias, cuero']] },
+  { k: 'cuando', p: '¿Cuándo lo vas a usar?', o: [['dia', 'De día, para diario'], ['noche', 'De noche o para salir'], ['siempre', 'Para todo']] },
+  { k: 'e', p: '¿Qué esencia prefieres?', o: [['linea', 'De línea (mejor precio)'], ['neeche', 'Neeche (más intensa)'], ['arabe', 'Árabe (cálida y dulce)'], ['todas', 'No sé, recomiéndame']] },
+];
+const FAMS = { dulce: ['gourmand', 'frutal', 'oriental'], fresco: ['citrica', 'acuatica', 'aromatica'], floral: ['floral'], intenso: ['amaderada', 'especiada', 'licor-y-cuero', 'oriental'] };
+const DE_DIA = ['citrica', 'acuatica', 'aromatica', 'floral', 'frutal'];
+let qPaso = 0, qResp = {};
+function abrirQuiz() { qPaso = 0; qResp = {}; renderQuiz(); $('#dlgQuiz').showModal(); }
+function renderQuiz() {
+  const box = $('#quizIn');
+  if (qPaso < QUIZ.length) {
+    const s = QUIZ[qPaso];
+    box.innerHTML = `<p class="small izq">Pregunta ${qPaso + 1} de ${QUIZ.length}</p><div class="qbar"><i style="width:${(qPaso / QUIZ.length) * 100}%"></i></div>
+      <h3>${s.p}</h3><div class="qops">${s.o.map(([v, n]) => `<button type="button" class="qop" data-qv="${v}">${n}</button>`).join('')}</div>
+      ${qPaso ? '<button type="button" class="link" data-qatras="1">← Atrás</button>' : ''}`;
+    return;
+  }
+  const res = recomienda();
+  box.innerHTML = `<h3>Tus aromas recomendados</h3><p class="small izq">Toca uno para elegir el tamaño, o vuelve a hacer el test.</p>
+    <div class="qres">${res.map(a => `<div class="qa"><b>${esc(a.n)}</b><small>${a.g} · ${TIPO_AROMA[a.e]}</small>
+      <button type="button" class="pedir" data-qpedir="${a.i}">Pedir este aroma</button></div>`).join('') || '<p>No encontré aromas con esas respuestas; prueba con otras.</p>'}</div>
+    <div class="qfin"><button type="button" class="mas" data-qotra="1">Ver otras opciones</button><button type="button" class="link" data-qreinicia="1">Volver a empezar</button></div>`;
+}
+function recomienda() {
+  const fams = FAMS[qResp.gusto] || [], esencia = qResp.e === 'todas' ? null : qResp.e;
+  let l = AROMAS.filter(a => a.e !== 'ambiental' && (!esencia || a.e === esencia)
+    && (qResp.g === 'todos' || a.g === qResp.g || a.g === 'Unisex') && fams.includes(slug(a.fam)));
+  if (qResp.cuando === 'dia') l = [...l.filter(a => DE_DIA.includes(slug(a.fam))), ...l.filter(a => !DE_DIA.includes(slug(a.fam)))];
+  if (qResp.cuando === 'noche') l = [...l.filter(a => !DE_DIA.includes(slug(a.fam))), ...l.filter(a => DE_DIA.includes(slug(a.fam)))];
+  const mitad = l.slice(0, Math.max(12, Math.ceil(l.length / 2)));   // primero los que mejor van con el momento
+  return azar(mitad).slice(0, 6);
+}
+$('#quizIn').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.qv) { qResp[QUIZ[qPaso].k] = b.dataset.qv; qPaso++; vibra(8); renderQuiz(); }
+  else if (b.dataset.qatras) { qPaso = Math.max(0, qPaso - 1); renderQuiz(); }
+  else if (b.dataset.qotra) renderQuiz();
+  else if (b.dataset.qreinicia) { qPaso = 0; qResp = {}; renderQuiz(); }
+  else if (b.dataset.qpedir) { $('#dlgQuiz').close(); pedirAroma(AROMAS[+b.dataset.qpedir]); }
+});
+
+/* ---------- repetir el último pedido ---------- */
+const ultimoPedido = () => (store.get('fr_ultimo', []) || []).filter(it => byId[it.id] && !byId[it.id].agotado
+  && (it.v < 0 || (byId[it.id].var && byId[it.id].var[it.v] && !byId[it.id].var[it.v].agotado)) && unitario(it) !== undefined);
+function repetirPedido() {
+  const ult = ultimoPedido(); if (!ult.length) return;
+  ult.forEach(it => addToCart(it.id, it.v, it.esencia, it.aroma, it.cant));
+  renderCart(); toast('Listo: tu último pedido está en el carrito');
+}
+
+/* ---------- tu negocio y reseñas (ajustes.js) ---------- */
+function renderNegocio() {
+  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
+  const mapa = n.mapa && /^https:\/\//.test(n.mapa) ? `<a class="mas" href="${esc(n.mapa)}" target="_blank" rel="noopener">Ver en el mapa</a>` : '';
+  $('#negocio').hidden = !filas.length && !mapa;
+  $('#negocio').innerHTML = filas.map(([k, v]) => `<div><b>${k}</b><span>${esc(v)}</span></div>`).join('') + mapa;
+  const r = (AJ.resenas || []).filter(x => x && x.texto);
+  $('#resenas').hidden = !r.length;
+  $('#resenas').innerHTML = r.length ? `<h2>Lo que dicen mis clientes</h2><div class="res-lista">${r.map(x => {
+    const s = Math.max(1, Math.min(5, Math.round(+x.estrellas || 5)));
+    return `<figure class="resena"><div class="estrellas" aria-label="${s} de 5 estrellas">${'★'.repeat(s)}<span>${'★'.repeat(5 - s)}</span></div>
+      <blockquote>${esc(x.texto)}</blockquote>${x.nombre ? `<figcaption>${esc(x.nombre)}</figcaption>` : ''}</figure>`; }).join('')}</div>` : '';
+}
+
 /* ---------- arranque ---------- */
-renderHero(); renderCats(); renderGrid(); renderCount(); startAutoplay();
+renderHero(); renderCats(); renderGrid(); renderCount(); renderNegocio(); startAutoplay();
+if (WHATSAPP) $('#waFlota').href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent('¡Hola! Tengo una pregunta sobre los productos Fraiche.')}`; else $('#waFlota').hidden = true;
 mueveGota(false); if (document.fonts) document.fonts.ready.then(() => mueveGota(false));
-window.tienda = { mensaje, P, AROMAS, get cart() { return cart; } };   // usado por las pruebas
+window.tienda = { mensaje, P, AROMAS, parecidos, get cart() { return cart; } };   // usado por las pruebas

@@ -22,13 +22,15 @@ let fails = 0;
 async function prueba(nombre, fn) {
   try { await fn(); console.log('  ✓', nombre); } catch (e) { fails++; console.log('  ✗', nombre, '\n     ', e.message.split('\n')[0]); }
 }
-async function abrir({ width = 390, height = 844, scheme = 'light' } = {}) {
+async function abrir({ width = 390, height = 844, scheme = 'light', ajustes = null, ruta = 'index.html' } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, colorScheme: scheme, reducedMotion: 'reduce' });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());          // sin internet en las pruebas
   const page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !/ERR_FAILED|fonts/.test(m.text())) errors.push(m.text()); });
-  await page.goto(url);
+  // ajustes.js de prueba (agotados, horario, reseñas…) en lugar del real
+  if (ajustes) await ctx.route(/ajustes\.js$/, r => r.fulfill({ contentType: 'text/javascript', body: `window.AJUSTES = ${JSON.stringify(ajustes)};` }));
+  await page.goto(url.replace('index.html', ruta));
   return { ctx, page, errors };
 }
 console.log('Tienda · pruebas');
@@ -86,7 +88,7 @@ await prueba('sin scroll horizontal en 360, 390, 768 y 1280 px; siempre clara au
 
 await prueba('los precios fijos están bien (60, 30 y 16 ml, nuevo y relleno)', async () => {
   const { ctx, page } = await abrir();
-  const p = await page.evaluate(() => Object.fromEntries(window.PRODUCTOS.map(p => [p.id, p.precios.linea])));
+  const p = await page.evaluate(() => Object.fromEntries(window.PRODUCTOS.map(p => [p.id, p.precios && p.precios.linea])));
   await ctx.close();
   assert.deepEqual([p['nuevo-60'], p['relleno-60'], p['nuevo-30'], p['relleno-30'], p['nuevo-16'], p['relleno-16']], [212, 144, 127, 71, 73, 35]);
 });
@@ -99,6 +101,7 @@ await prueba('categoría Rellenos filtra y el título cambia', async () => {
   assert.equal(titulo, 'Rellenos'); assert.equal(n, 13);
   for (const c of ['envases', 'velas', 'maquillaje', 'ninos', 'casa']) {
     const { ctx: x, page: pg } = await abrir();
+    if (!(await pg.locator(`.cat[data-cat="${c}"]`).count())) await pg.click('[data-mascats]');   // las demás categorías están en "Más"
     await pg.click(`.cat[data-cat="${c}"]`);
     const k = await pg.locator('.card').count();
     await x.close();
@@ -274,6 +277,128 @@ await prueba('relleno a tu medida: escribe los ml de su frasco y el precio se ca
   assert.equal(linea, '$109');   // entre 30 ml ($71) y 50 ml ($121)
   assert.equal(diez, '$21');     // igual que el relleno de 10 ml
   assert.ok(msg.includes('Relleno de perfume a tu medida · 45 ml') && msg.includes('$109'), msg);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('En existencia: fotos reales, precio de venta (sin costos) y sale en su categoría', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.cat[data-cat="existencia"]');
+  const n = await page.locator('.card').count();
+  const badges = await page.locator('.card .badge.exist').count();
+  await page.click('.card .add[data-open="ex-body-250"]');
+  const opciones = await page.locator('#pVar .var').count();
+  const boton = await page.textContent('#pAgregar');
+  const aroma = await page.isVisible('#aromaBox');
+  const datos = await page.evaluate(() => JSON.stringify(window.EXISTENCIAS));
+  const fotos = await page.evaluate(() => window.EXISTENCIAS.flatMap(p => [p.img, ...(p.var || []).map(v => v.img)]).filter(Boolean));
+  await ctx.close();
+  assert.ok(n >= 20 && badges === n, `${n} productos, ${badges} con etiqueta`);
+  assert.equal(opciones, 28);
+  assert.equal(boton, 'Agregar · $86');
+  assert.ok(!aroma, 'un producto terminado no pide aroma');
+  assert.ok(!/costo/i.test(datos), 'no deben ir costos en la página');
+  for (const f of fotos) assert.ok(fs.existsSync(path.join(ROOT, f)), `falta ${f}`);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('agotados desde ajustes.js: la opción sale "agotado" y el botón no deja agregar', async () => {
+  const { ctx, page, errors } = await abrir({ ajustes: { agotados: ['ex-veladoras:Tierna Lavanda', 'ex-pillow-mist'] } });
+  await page.click('.cat[data-cat="existencia"]');
+  const badge = await page.textContent('.card:has([data-open="ex-pillow-mist"]) .badge');
+  await page.click('.card .add[data-open="ex-veladoras"]');
+  const elegida = await page.textContent('#pVar .var:has(input:checked) .vn');
+  await page.click('#pVar .var:has-text("Tierna Lavanda")');
+  const ago = await page.isDisabled('#pAgregar'), texto = await page.textContent('#pAgregar');
+  await ctx.close();
+  assert.equal(badge, 'Agotado');
+  assert.equal(elegida, 'Encanto de Azahar');
+  assert.ok(ago && texto === 'Agotado por ahora', texto);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('test de aroma: 4 preguntas y recomienda aromas del género y la esencia elegidos', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.quiz-cta');
+  for (const v of ['Caballero', 'fresco', 'dia', 'arabe']) await page.click(`#quizIn [data-qv="${v}"]`);
+  const res = await page.locator('#quizIn .qa small').allTextContents();
+  await page.click('#quizIn [data-qpedir] >> nth=0');
+  const tam = await page.isVisible('#dlgTam[open]');
+  await ctx.close();
+  assert.ok(res.length >= 3, `${res.length} aromas`);
+  assert.ok(res.every(s => /^(Caballero|Unisex) · Esencia árabe$/.test(s)), res.join(' | '));
+  assert.ok(tam, 'abre la ventana de tamaños');
+  assert.deepEqual(errors, []);
+});
+
+await prueba('aromas parecidos en la ventana de tamaños, y al tocar uno cambia el aroma', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('#btnBuscar'); await page.fill('#q', '212 VIP Black');
+  await page.click('#aromasRes .acard:has(h3:text-is("212 VIP Black")) .pedir');
+  const chips = await page.locator('#tFicha .chip-aroma').allTextContents();
+  await page.click('#tFicha .chip-aroma >> nth=0');
+  const nuevo = await page.textContent('#tFicha .ficha b');
+  await ctx.close();
+  assert.ok(chips.length >= 2 && !chips.includes('212 VIP Black'), chips.join(', '));
+  assert.equal(nuevo, chips[0]);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('categorías: se ven las principales y "Más" muestra las demás; botón de WhatsApp y vista previa', async () => {
+  const { ctx, page, errors } = await abrir();
+  const antes = await page.locator('#cats .cat:not(.mas-cats)').count();
+  await page.click('[data-mascats]');
+  const despues = await page.locator('#cats .cat:not(.mas-cats)').count();
+  const wa = await page.getAttribute('#waFlota', 'href');
+  const og = await page.getAttribute('meta[property="og:image"]', 'content');
+  await ctx.close();
+  assert.ok(antes <= 7 && despues > antes + 8, `${antes} → ${despues}`);
+  assert.ok(wa.startsWith('https://wa.me/52'), wa);
+  assert.ok(og.endsWith('img/compartir.jpg') && fs.existsSync(path.join(ROOT, 'img/compartir.jpg')), og);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('repetir el último pedido desde el carrito vacío', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.cat[data-cat="existencia"]');
+  await page.click('.card .add[data-open="ex-baby"]');
+  await page.click('#pAgregar');
+  await page.click('#btnCarrito');
+  await page.click('#enviar');
+  await page.click('#okCerrar');
+  await page.click('#btnCarrito');
+  const visible = await page.isVisible('#repetir');
+  await page.click('#repetir');
+  const items = await page.locator('#items .item').count();
+  await ctx.close();
+  assert.ok(visible, 'sale el botón');
+  assert.equal(items, 1);
+  assert.deepEqual(errors.filter(e => !/wa\.me/.test(e)), []);
+});
+
+await prueba('negocio y reseñas desde ajustes.js (y no salen si están vacíos)', async () => {
+  const a = await abrir();
+  const vacio = await a.page.isHidden('#negocio') && await a.page.isHidden('#resenas');
+  await a.ctx.close();
+  const { ctx, page, errors } = await abrir({ ajustes: { negocio: { horario: 'Lunes a sábado de 10 a 7' }, resenas: [{ nombre: 'Ana', texto: 'Me encantó', estrellas: 5 }] } });
+  const neg = await page.textContent('#negocio'), res = await page.textContent('#resenas');
+  await ctx.close();
+  assert.ok(vacio, 'vacíos no se ven');
+  assert.ok(neg.includes('Lunes a sábado de 10 a 7') && res.includes('Me encantó'), neg + res);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('panel.html genera un ajustes.js válido', async () => {
+  const { ctx, page, errors } = await abrir({ ruta: 'panel.html' });
+  await page.fill('#horario', 'Lunes a viernes');
+  await page.fill('#buscaAgo', 'veladoras');
+  await page.check('[data-ago="ex-veladoras:Tierna Lavanda"]');
+  await page.fill('#reTexto', 'Muy buen servicio'); await page.click('#reAgregar');
+  const txt = await page.evaluate(() => window.panel.archivo());
+  await ctx.close();
+  const w = {}; new Function('window', txt)(w);
+  assert.equal(w.AJUSTES.negocio.horario, 'Lunes a viernes');
+  assert.deepEqual(w.AJUSTES.agotados, ['ex-veladoras:Tierna Lavanda']);
+  assert.equal(w.AJUSTES.resenas[0].texto, 'Muy buen servicio');
   assert.deepEqual(errors, []);
 });
 

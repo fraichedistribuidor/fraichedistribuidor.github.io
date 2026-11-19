@@ -1,0 +1,26 @@
+# Nombre de archivo de cada foto, en el orden de los PDF (página, de izquierda a derecha y de arriba abajo).
+PDF2 = {
+ 'p02': ['disney-toy-story-marcianitos', 'disney-stitch', 'disney-toy-story-woody', 'disney-minecraft', 'disney-cars', 'disney-princess'],
+ 'p03': ['disney-frozen', 'disney-spider-man'],
+ 'p04': ['clean-contorno-ojos', 'clean-serum-facial', 'clean-agua-micelar', 'clean-crema-facial', 'relax-time-serum'],
+ 'p05': ['vela-encanto-de-azahar', 'vela-tierna-lavanda'],
+ 'p06': ['pillow-mist-brisa-de-verano', 'hair-mist-flor-de-cactus'],
+ 'p07': ['crema-afeitar-alpha', 'after-shave-fresh-man'],
+ 'p08': ['atomizador-negro', 'atomizador-amarillo'],
+ 'p09': ['she-locion-250', 'love-antitranspirante', 'hair-oil'],
+ 'p10': ['gelato-crema-postre-de-avellana', 'gelato-crema-pistache', 'soft-skin-ultra', 'soft-skin-intensa', 'soft-skin-extra'],
+ 'p11': ['paquete-gelato-collection', 'paquete-samurai-pet', 'paquete-country-and-city-kids'],
+ 'p12': ['fun-in-the-sun-facial', 'fun-in-the-sun-corporal'],
+ 'p13': ['keep-hands-clean'],
+ 'p14': ['fraicheur-mandarina', 'max-repel', 'bold-desodorante', 'carlota-de-limon-aromatizante'],
+ 'p15': ['body100-starry-soul', 'body100-she-only-good-vibes', 'body100-dulce-gomita'],
+ 'p16': ['body250-parisian-legacy', 'body250-sol-de-los-cabos', 'body250-sun-and-plum', 'body250-brisa-de-acapulco', 'body250-intense-night', 'body250-elektrik-aqua'],
+ 'p17': ['body250-pitahaya-and-playa', 'body250-feline-charm', 'body250-beso-de-cereza', 'body250-perla-de-mazatlan', 'body250-postre-de-avellana', 'body250-olas-de-puerto-vallarta'],
+ 'p18': ['body250-carlota-de-limon', 'body250-dulce-gomita', 'body250-gold-lilies', 'body250-selenas-secret', 'body250-queen', 'body250-glimmers-of-fantasy'],
+ 'p19': ['body250-entre-besos', 'body250-sugar-bliss', 'body250-berry-chic', 'body250-velvet-night', 'body250-heaven-whisper', 'body250-air-essence'],
+ 'p20': ['body250-tropical-summer-days', 'body250-oceano-brillante', 'body250-sexy-musk', 'body250-sexy-musk-2', 'body250-vision-fresh'],
+ 'p21': ['spray-nomadic-man', 'spray-coastal-breeze', 'spray-red-rouge', 'spray-santalum', 'spray-energetic-cherry', 'spray-vanilla-smoke'],
+ 'p22': ['baby-cologne-azul', 'baby-cologne-rosa'],
+}
+PDF3 = ['colgante-manzana', 'mystic-vibrations-tauro', 'figura-osito', 'roll-on-negro', 'roll-on-azul', 'hair-shampoo', 'hair-mist-personalizable',
+        'soft-skin-perfumable', 'kit-4you-vibes', 'frasco-esmerilado', 'figura-pulpo', 'botella-turquesa', 'botella-lima', 'botella-rosa']
