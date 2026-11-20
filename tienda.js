@@ -68,7 +68,7 @@ function generoFrasco(p, v) {
 /* ---------- envases agrupados por tamaño ---------- */
 // Cada "Perfume X ml" junta tus frascos (productos.js) y todos los envases del catálogo de ese tamaño, así al tocar
 // un tamaño se ven todos sus envases juntos. Los que ya están entre tus frascos (misma botella y color) no se repiten.
-const YA_ESTAN = { 'torso-woman-man': ['Torso Man (caballero) · teal · 120 ml'], 'ice-120': ['Rosa'],
+const YA_ESTAN = { 'torso-woman-man': ['Torso Man (caballero) · teal · 120 ml', 'Torso Woman (dama) · rojo · 100 ml'], 'ice-120': ['Rosa'],
   liliana: ['Transcendent pink 60 ml', 'Lila 60 ml', 'Rosa 60 ml', 'Rosa 30 ml', 'Melón 30 ml'], perseo: ['Turquesa', 'Índigo'],
   'for-men': ['Cristalino turquesa', 'Humo azul', 'Esmeralda'], heel: ['Azul'], 'perfumeros-4you-vibes': ['Peace amarillo'] };
 const sinMl = s => s.replace(/\s*·?\s*\d+ ml\b/i, '').trim().replace(/^·\s*/, '');
@@ -120,6 +120,35 @@ const REPETIDOS = ['kit-for-you', 'set-destilados'];
 // primero los perfumes (nuevos y rellenos), después el resto del catálogo
 const PERF = (window.PRODUCTOS || []).filter(p => (p.cat === 'nuevo' || p.cat === 'relleno' || p.mostrar) && !REPETIDOS.includes(p.id));
 const AJ = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
+/* ---------- bodys: un solo "Body mist 250 ml" ($89) y un solo "Body mist 100 ml" ($60) ---------- */
+// Juntan los diseños que tienes en existencia (primero, marcados) y todos los del catálogo de esa medida,
+// sin repetir nombres. Los bodys sueltos del catálogo ya no salen en la lista (el buscador sí los encuentra).
+// Los sprays Neeche Passion del catálogo son los mismos que tienes en existencia ($116).
+const BODY_ALIAS = { heavenwishper: 'heavenwhisper' };
+const claveBody = n => { const k = minus(n).replace(/[^a-z]/g, ''); return BODY_ALIAS[k] || k; };
+const nombreBody = p => p.nombre.replace(/\s*·.*$/, '').replace(/\s*loci[oó]n\b.*$/i, '').trim();
+(function juntaBodys() {
+  const ex = Object.fromEntries((window.EXISTENCIAS || []).map(p => [p.id, p]));
+  const grupos = { 250: ex['ex-body-250'], 100: ex['ex-body-100'] };
+  for (const g of Object.values(grupos)) if (g) g.var = (g.var || []).map(v => ({ ...v, ex: true }));
+  const ya = { 250: new Set(), 100: new Set() };
+  for (const [ml, g] of Object.entries(grupos)) if (g) g.var.forEach(v => ya[ml].add(claveBody(v.n)));
+  for (const p of (window.CATALOGO || []).filter(p => p.cat === 'bodys' && !p.prox)) {
+    const mlDe = s => (String(s || '').match(/(\d+)\s*ml/) || [])[1];
+    const items = p.var && p.var.length ? p.var.map(v => [v, mlDe(v.n) || mlDe(p.cont)]) : [[null, mlDe(p.cont)]];
+    if (!items.every(([, ml]) => grupos[ml])) continue;          // otra medida (p. ej. 200 ml): se queda como está
+    for (const [v, ml] of items) {
+      const limpio = v ? v.n.replace(/\s*\d+\s*ml\b/i, '').trim() : '';
+      const n = limpio || nombreBody(p), k = claveBody(n);
+      if (ya[ml].has(k)) continue;
+      ya[ml].add(k);
+      grupos[ml].var.push({ n, img: (v && v.img) || p.img, notas: (v && v.notas) || p.notas });
+    }
+    AGRUPADOS.add(p.id);
+  }
+  AGRUPADOS.add('neeche-sprays');
+})();
+
 // lo que ya tienes: mismo formato que el resto (precio único o por opción)
 const EXIST = (window.EXISTENCIAS || []).map(p => ({
   ...p, existencia: true, ilus: ILUS[p.cat] || 'frasco', detalle: [p.tipo, p.cont].filter(Boolean).join(' · '),
@@ -298,7 +327,7 @@ let masCats = false;
 function renderCats() {
   const ver = CATS.filter(c => masCats || PRINCIPALES.includes(c.id) || c.id === cat);
   $('#cats').innerHTML = ver.map(c => `<button class="cat" style="--h:${c.h}" data-cat="${c.id}" aria-pressed="${c.id === cat && !soloFavs}">
-    <span class="ring">${ART[c.ilus]('')}</span>${c.nombre}</button>`).join('')
+    <span class="ring foto"><img src="img/categorias/${c.id}.webp" alt="" decoding="async"></span>${c.nombre}</button>`).join('')
     + `<button class="cat mas-cats" data-mascats="1" aria-expanded="${masCats}"><span class="ring">${masCats ? '<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>' : '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'}</span>${masCats ? 'Menos' : 'Más'}</button>`;
   $('#pills').innerHTML = TAGS.map(t => `<button class="pill" data-tag="${t.id}" aria-pressed="${t.id === tag}">${t.nombre}</button>`).join('');
 }
@@ -390,17 +419,19 @@ function openProduct(id, op = {}) {
     p.incluye && `<p><b>Incluye:</b></p><ul>${p.incluye.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`].filter(Boolean).join('');
   $('#pInfo').innerHTML = info; $('#pInfo').hidden = !info;
   $('#pVar').hidden = !p.var;
-  const muchos = p.var && p.var.length > 8 && p.var.some(v => v.g);
-  const leyenda = muchos ? `Elige tu frasco <small>${p.var.length} envases de ${p.ml} ml</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
+  const muchos = p.var && p.var.length > 8 && !p.medida, conGen = muchos && p.var.some(v => v.g);
+  const nEx = p.var ? p.var.filter(v => v.ex).length : 0;
+  const leyenda = conGen ? `Elige tu frasco <small>${p.var.length} envases de ${p.ml} ml</small>`
+    : muchos ? `Elige una opción <small>${p.var.length} diseños${nEx ? ` · ${nEx} en existencia` : ''}</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
   $('#pVar').innerHTML = p.medida ? `<legend>¿Cuántos ml tiene tu frasco?</legend>
     <div class="medida"><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
     <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>`
   : p.var ? `<legend>${leyenda}</legend>`
-    + (muchos ? `<input class="vbusca" id="pVarBusca" type="search" placeholder="Buscar frasco: Liliana, Perseo, Axel…" autocomplete="off" aria-label="Buscar frasco">` : '')
-    + (muchos ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
+    + (muchos ? `<input class="vbusca" id="pVarBusca" type="search" placeholder="${conGen ? 'Buscar frasco: Liliana, Perseo, Axel…' : 'Buscar por nombre'}" autocomplete="off" aria-label="Buscar">` : '')
+    + (conGen ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
     + `<div class="vars${muchos ? ' muchos' : ''}">` + p.var.map((v, i) => `
     <label class="var${v.img ? ' con-foto' : ''}${v.agotado ? ' agotado' : ''}" data-g="${v.g || ''}" data-n="${esc(minus(v.n))}"><input type="radio" name="variante" value="${i}" ${i === vSel ? 'checked' : ''}>
-      ${v.img ? `<span class="vimg">${imgTag(v.img, v.n)}</span>` : ''}<span class="vn">${esc(v.n)}${v.agotado ? ' <small>(agotado)</small>' : ''}</span></label>`).join('') + '</div>' : '';
+      ${v.img ? `<span class="vimg">${imgTag(v.img, v.n)}</span>` : ''}<span class="vn">${esc(v.n)}${v.agotado ? ' <small>(agotado)</small>' : ''}${v.ex && !v.agotado ? '<small class="vex">En existencia</small>' : ''}</span></label>`).join('') + '</div>' : '';
   $('#pAroma').value = '';
   $('#aromaBox').hidden = !pideAroma(p);
   $('#pOpciones').innerHTML = '';

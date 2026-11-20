@@ -156,7 +156,7 @@ await prueba('producto con aroma fijo: no pide aroma y respeta el precio especia
   const aroma = await page.isVisible('#pAroma');
   const boton = await page.textContent('#pAgregar');
   await ctx.close();
-  assert.ok(n >= 20, `solo ${n} con precio especial`);
+  assert.ok(n >= 12, `solo ${n} con precio especial`);   // los bodys de $42 ahora van en el de 250 ml a $89
   assert.equal(aroma, false); assert.equal(boton, 'Agregar · $77');
 });
 
@@ -293,8 +293,8 @@ await prueba('En existencia: fotos reales, precio de venta (sin costos) y sale e
   const fotos = await page.evaluate(() => window.EXISTENCIAS.flatMap(p => [p.img, ...(p.var || []).map(v => v.img)]).filter(Boolean));
   await ctx.close();
   assert.ok(n >= 20 && badges === n, `${n} productos, ${badges} con etiqueta`);
-  assert.equal(opciones, 28);
-  assert.equal(boton, 'Agregar · $86');
+  assert.ok(opciones > 50, `${opciones} diseños`);
+  assert.equal(boton, 'Agregar · $89');
   assert.ok(!aroma, 'un producto terminado no pide aroma');
   assert.ok(!/costo/i.test(datos), 'no deben ir costos en la página');
   for (const f of fotos) assert.ok(fs.existsSync(path.join(ROOT, f)), `falta ${f}`);
@@ -399,6 +399,39 @@ await prueba('panel.html genera un ajustes.js válido', async () => {
   assert.equal(w.AJUSTES.negocio.horario, 'Lunes a viernes');
   assert.deepEqual(w.AJUSTES.agotados, ['ex-veladoras:Tierna Lavanda']);
   assert.equal(w.AJUSTES.resenas[0].texto, 'Muy buen servicio');
+  assert.deepEqual(errors, []);
+});
+
+await prueba('bodys: uno solo de 250 ml a $89 y uno de 100 ml a $60, sin repetidos; sprays Neeche a $116', async () => {
+  const { ctx, page, errors } = await abrir();
+  const r = await page.evaluate(() => {
+    const by = Object.fromEntries(window.tienda.P.map(p => [p.id, p]));
+    const clave = n => n.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+    const rep = id => by[id].var.map(v => clave(v.n)).filter((k, i, a) => a.indexOf(k) !== i);
+    return { p250: by['ex-body-250'].precios.linea, p100: by['ex-body-100'].precios.linea, spray: by['ex-spray'].precios.linea,
+      n250: by['ex-body-250'].var.length, rep250: rep('ex-body-250'), rep100: rep('ex-body-100'),
+      tropical: by['ex-body-250'].var.filter(v => clave(v.n) === 'tropicalsummerdays').length };
+  });
+  await page.click('[data-mascats]'); await page.click('.cat[data-cat="bodys"]');
+  const lista = await page.locator('.card h3').allTextContents();
+  const precios = await page.locator('.card .price b').allTextContents();
+  await ctx.close();
+  assert.deepEqual([r.p250, r.p100, r.spray], [89, 60, 116], JSON.stringify(r));
+  assert.ok(r.n250 >= 50, `${r.n250} diseños de 250 ml`);
+  assert.deepEqual([r.rep250, r.rep100, r.tropical], [[], [], 1], JSON.stringify(r));
+  assert.ok(lista.filter(n => /Tropical|Celebrities$|Gelato|Momentos|SHE/.test(n)).length === 0, lista.join(' | '));
+  assert.ok(!precios.includes('$42') && !precios.includes('$39'), precios.join(' '));   // $87 solo el Everyday de 200 ml
+  assert.deepEqual(errors, []);
+});
+
+await prueba('iconos de categorías con foto real de un producto', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('[data-mascats]');
+  const srcs = await page.locator('#cats .cat:not(.mas-cats) .ring img').evaluateAll(l => l.map(i => i.getAttribute('src')));
+  const cats = await page.locator('#cats .cat:not(.mas-cats)').count();
+  await ctx.close();
+  assert.equal(srcs.length, cats);
+  for (const s of srcs) assert.ok(fs.existsSync(path.join(ROOT, s)), `falta ${s}`);
   assert.deepEqual(errors, []);
 });
 
