@@ -14,8 +14,18 @@ window.AJUSTES = {
   },
   // Envío a domicilio: costo fijo; si pones zonas, el cliente elige la suya y se cobra su costo.
   // gratisDesde: envío gratis cuando la compra llega a esa cantidad (0 = nunca).
-  // ej. zonas: [{ nombre: 'Cuautitlán', costo: 40 }, { nombre: 'Izcalli', costo: 60 }]
-  envio: { costo: 50, zonas: [], gratisDesde: 0 },
+  // otraZona: false = no se muestra la opción "Otra zona (te confirmo el costo)".
+  // Según la distancia desde tu casa: a unas cuadras gratis, colonia o cercanas $25, más lejos $50.
+  envio: {
+    costo: 50,
+    zonas: [
+      { nombre: 'A unas cuadras', costo: 0 },
+      { nombre: 'Mi colonia o colonias cercanas', costo: 25 },
+      { nombre: 'Más lejos', costo: 50 },
+    ],
+    gratisDesde: 0,
+    otraZona: false,
+  },
   // Productos agotados: el id del producto, o 'id:Nombre de la opción' para una sola opción.
   // ej. ['ex-veladoras:Tierna Lavanda', 'kit-papa']
   agotados: [],

@@ -634,12 +634,12 @@ $('#pVar').addEventListener('input', e => { if (e.target.id === 'pVarBusca') fil
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
 const subtotal = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
-// costo del envío: 0 si pasa a recoger; null = por confirmar (zona que no está en la lista)
+// costo del envío: 0 en punto de encuentro; null = por confirmar (aún no elige distancia, u "otra zona")
 function costoEnvio() {
   if (!entregaDatos().envio) return 0;
   if (ENVIO.gratisDesde > 0 && subtotal() >= ENVIO.gratisDesde) return 0;
   if (!ZONAS.length) return +ENVIO.costo || 0;
-  const z = ZONAS[+($('#cZona') || {}).value];
+  const v = ($('#cZona') || {}).value, z = v === '' || v === 'otra' || v == null ? null : ZONAS[+v];
   return z ? +z.costo || 0 : null;
 }
 const total = () => subtotal() + (costoEnvio() || 0);
@@ -703,11 +703,12 @@ function mensaje() {
     return `${i + 1}. ${p.nombre}${det ? ' · ' + det : ''}\n   ${it.cant} × ${u == null ? 'precio por confirmar' : `${money(u)} = ${money(u * it.cant)}`}`;
   });
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(', ');
-  const zona = ent.envio && ZONAS.length ? (ZONAS[+$('#cZona').value] || { nombre: 'Otra zona' }).nombre : '';
+  const zv = ZONAS.length ? $('#cZona').value : '';
+  const zona = ent.envio && ZONAS.length ? (zv === '' ? 'sin elegir' : (ZONAS[+zv] || { nombre: 'Otra zona' }).nombre) : '';
   return [`¡Hola! Quiero hacer este pedido${folio ? ' (' + folio + ')' : ''}:`, '', ...lineas, '',
     ent.envio ? `Productos: ${money(subtotal())}` : null, ent.envio ? `Envío a domicilio${zona ? ' (' + zona + ')' : ''}: ${textoEnvio()}` : null,
     `*Total: ${money(total())}${porConfirmar() || costoEnvio() == null ? ' + por confirmar' : ''}*`, '',
-    nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Envío a domicilio' : 'Paso a recoger'}`,
+    nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Envío a domicilio' : 'Punto de encuentro (lo acordamos por aquí)'}`,
     ent.envio && ent.lugar ? `Lugar de entrega: ${ent.lugar}` : null,
     ent.envio && cuando ? `Fecha y hora que prefiero: ${cuando}` : null,
     notas ? `Notas: ${notas}` : null].filter(x => x !== null).join('\n');
@@ -855,17 +856,19 @@ document.querySelectorAll('input[name=entrega]').forEach(r => r.addEventListener
 // zonas de envío (si las pusiste en el panel) y el costo en el botón de envío
 if (ZONAS.length) {
   $('#zonaBox').hidden = false;
-  $('#cZona').innerHTML = ZONAS.map((z, i) => `<option value="${i}">${esc(z.nombre)} · ${+z.costo ? money(+z.costo) : 'gratis'}</option>`).join('')
-    + '<option value="otra">Otra zona (te confirmo el costo)</option>';
+  $('#cZona').innerHTML = '<option value="">Elige qué tan lejos estás</option>'
+    + ZONAS.map((z, i) => `<option value="${i}">${esc(z.nombre)} · ${+z.costo ? money(+z.costo) : 'gratis'}</option>`).join('')
+    + (ENVIO.otraZona === false ? '' : '<option value="otra">Otra zona (te confirmo el costo)</option>');
   $('#cZona').addEventListener('change', renderTotales);
 }
-$('#envioCosto').textContent = ZONAS.length ? 'según tu zona' : +ENVIO.costo ? `+${money(+ENVIO.costo)}` : 'gratis';
+$('#envioCosto').textContent = ZONAS.length ? 'según distancia' : +ENVIO.costo ? `+${money(+ENVIO.costo)}` : 'gratis';
 let ultimoMensaje = '';
 const abrirWhats = m => window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(m)}`, '_blank', 'noopener');
 $('#enviar').addEventListener('click', () => {
   if (!WHATSAPP || !cart.length) return;
   const ent = entregaDatos();
   if (ent.envio && !ent.lugar) { toast('Escribe el lugar de entrega'); $('#cDir').focus(); return; }
+  if (ent.envio && ZONAS.length && !$('#cZona').value) { toast('Elige qué tan lejos estás'); $('#cZona').focus(); return; }
   if (ent.envio && horaOcupada()) { toast('A esa hora no hay entregas; elige otra'); $('#cHora').focus(); return; }
   folio = nuevoFolio();
   ultimoMensaje = mensaje();
@@ -881,7 +884,7 @@ function pedidoRealizado(ent) {
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(' a las ');
   $('#okEntrega').innerHTML = ent.envio
     ? `<b>Envío a domicilio</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp acordamos contigo el lugar, la fecha y la hora exactos de la entrega.</p>`
-    : `<b>Pasas a recoger</b><p class="small">Por WhatsApp te avisamos cuándo está listo tu pedido y dónde recogerlo.</p>`;
+    : `<b>Punto de encuentro</b><p class="small">Por WhatsApp acordamos dónde y cuándo vernos para entregarte tu pedido, sin costo.</p>`;
   $('#dlgCarrito').close();
   cart = []; saveCart();
   $('#dlgOk').showModal();
@@ -1016,9 +1019,9 @@ function repetirPedido() {
 /* ---------- tu negocio y reseñas (ajustes.js) ---------- */
 function renderNegocio() {
   const n = AJ.negocio || {};
-  const envio = ZONAS.length ? `Según tu zona: ${ZONAS.map(z => `${z.nombre} ${+z.costo ? money(+z.costo) : 'gratis'}`).join(' · ')}`
+  const envio = ZONAS.length ? `A domicilio según la distancia: ${ZONAS.map(z => `${z.nombre.toLowerCase()} ${+z.costo ? money(+z.costo) : 'gratis'}`).join(' · ')}`
     : +ENVIO.costo ? `${money(+ENVIO.costo)} a domicilio` : 'Gratis';
-  const filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Envío', envio + (ENVIO.gratisDesde > 0 ? ` · gratis desde ${money(ENVIO.gratisDesde)}` : '') + '. También puedes pasar a recoger sin costo.'],
+  const filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Envío', envio + (ENVIO.gratisDesde > 0 ? ` · gratis desde ${money(ENVIO.gratisDesde)}` : '') + '. O nos vemos en un punto de encuentro, sin costo.'],
     ['Dónde', n.direccion]].filter(([, v]) => v);
   const mapa = n.mapa && /^https:\/\//.test(n.mapa) ? `<a class="mas" href="${esc(n.mapa)}" target="_blank" rel="noopener">Ver en el mapa</a>` : '';
   $('#negocio').hidden = !filas.length && !mapa;

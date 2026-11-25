@@ -165,11 +165,12 @@
       <input id="cNombre" type="text" autocomplete="name" placeholder="¿A nombre de quién?">
       <span class="fld">Entrega</span>
       <div class="seg" role="radiogroup" aria-label="Entrega">
-        <label><input type="radio" name="entrega" value="Recoger" checked><span>Paso a recoger</span></label>
+        <label><input type="radio" name="entrega" value="Recoger" checked><span>Punto de encuentro <small>sin costo</small></span></label>
         <label><input type="radio" name="entrega" value="Envío"><span>Envío a domicilio <small id="envioCosto"></small></span></label>
       </div>
       <div id="dirBox" hidden>
-        <div id="zonaBox" hidden><label class="fld" for="cZona">Tu zona</label><select id="cZona"></select></div>
+        <div id="zonaBox" hidden><label class="fld" for="cZona">¿Qué tan lejos estás?</label><select id="cZona"></select>
+          <p class="small izq">Con tu dirección te confirmo por WhatsApp si el costo es correcto.</p></div>
         <label class="fld" for="cDir">Lugar de entrega</label>
         <input id="cDir" type="text" autocomplete="street-address" placeholder="Calle, número y colonia, o punto de encuentro">
         <div class="grid2">
