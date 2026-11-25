@@ -32,7 +32,6 @@ En *Rellenos*, **Relleno de perfume a tu medida** es para clientes con frasco de
 
 Abre `panel.html` (por ejemplo `https://romerovazquezricardorv-netizen.github.io/P-gina-web-fraiche-/panel.html`). Ahí cambias:
 - **Tu negocio**: horario, zona de entrega, punto de entrega y mapa (salen en "Cómo pedir").
-- **Envío a domicilio**: $50 fijo de inicio; puedes cambiarlo, poner precios por zona (el cliente elige la suya) o envío gratis desde cierta compra. Se suma al total, al mensaje de WhatsApp y a la confirmación.
 - **Agotados**: todo un producto o una sola opción; en la tienda sale "Agotado" y no se puede pedir.
 - **Precios**: cambia el precio de cualquier producto.
 - **Promociones**: salen primero en el carrusel y en la categoría Promociones.

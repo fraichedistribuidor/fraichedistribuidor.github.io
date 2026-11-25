@@ -53,18 +53,6 @@
   </section>
 
   <section>
-    <h2>Envío a domicilio</h2>
-    <p class="nota">Se suma al total cuando el cliente elige “Envío a domicilio”. Si agregas zonas, el cliente elige la suya y se cobra su costo (o “Otra zona” para que tú le confirmes).</p>
-    <div class="fila"><div><label for="envCosto">Costo del envío ($)</label><input id="envCosto" type="number" min="0" step="1"></div>
-      <div><label for="envGratis">Envío gratis desde ($, 0 = nunca)</label><input id="envGratis" type="number" min="0" step="1"></div></div>
-    <label>Zonas (opcional)</label>
-    <div class="fila"><div><input id="zNombre" placeholder="Nombre de la zona, ej. Cuautitlán"></div>
-      <div style="max-width:140px"><input id="zCosto" type="number" min="0" step="1" placeholder="Costo"></div>
-      <div style="flex:none;min-width:0"><button id="zAgregar">Agregar zona</button></div></div>
-    <div id="zLista"></div>
-  </section>
-
-  <section>
     <h2>Agotados</h2>
     <p class="nota">Marca lo que se te acabó: en la tienda sale “Agotado” y no se puede agregar al carrito. Puedes marcar todo el producto o solo una opción.</p>
     <input id="buscaAgo" type="search" placeholder="Buscar producto: body, Liliana, vela…">
@@ -140,7 +128,7 @@ const PRODS = [
 const porId = Object.fromEntries(PRODS.map(p => [p.id, p]));
 $('#prodIds').innerHTML = PRODS.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
 
-const base = Object.assign({ negocio: {}, envio: { costo: 50, zonas: [], gratisDesde: 0 }, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
+const base = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
 let A = store.get('fr_panel') || JSON.parse(JSON.stringify(base));
 // lo que el panel no edita (horas ocupadas) se conserva de ajustes.js
 A.negocio = { ...A.negocio };
@@ -153,24 +141,6 @@ for (const k of ['horario', 'zona', 'direccion', 'mapa']) {
   $('#' + k).value = (A.negocio || {})[k] || '';
   $('#' + k).addEventListener('input', e => { A.negocio = { ...A.negocio, [k]: e.target.value.trim() }; guarda(); });
 }
-
-// ---- envío ----
-A.envio = Object.assign({ costo: 50, zonas: [], gratisDesde: 0 }, A.envio || {});
-$('#envCosto').value = A.envio.costo; $('#envGratis').value = A.envio.gratisDesde;
-$('#envCosto').addEventListener('input', e => { A.envio = { ...A.envio, costo: Math.max(0, +e.target.value || 0) }; guarda(); });
-$('#envGratis').addEventListener('input', e => { A.envio = { ...A.envio, gratisDesde: Math.max(0, +e.target.value || 0) }; guarda(); });
-function renderZonas() {
-  $('#zLista').innerHTML = A.envio.zonas.map((z, i) => `<div class="item"><span><b>${esc(z.nombre)}</b> <small>$${z.costo}</small></span><button data-quita-z="${i}">Quitar</button></div>`).join('');
-}
-$('#zAgregar').addEventListener('click', () => {
-  const nombre = $('#zNombre').value.trim(); if (!nombre) { $('#zNombre').focus(); return; }
-  A.envio = { ...A.envio, zonas: [...A.envio.zonas, { nombre, costo: Math.max(0, +$('#zCosto').value || 0) }] };
-  guarda(); renderZonas(); $('#zNombre').value = ''; $('#zCosto').value = '';
-});
-document.addEventListener('click', e => {
-  if (e.target.dataset.quitaZ == null) return;
-  A.envio = { ...A.envio, zonas: A.envio.zonas.filter((_, i) => i !== +e.target.dataset.quitaZ) }; guarda(); renderZonas();
-});
 
 // ---- agotados ----
 const agotado = clave => A.agotados.includes(clave);
@@ -252,7 +222,7 @@ $('#descargar').addEventListener('click', () => {
 $('#copiar').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(archivo()); $('#msg').textContent = 'Copiado'; } catch (e) { $('#msg').textContent = 'No se pudo copiar; usa Descargar'; }
 });
-renderZonas(); renderAgotados(); renderPrecios(); renderPromos(); renderResenas();
+renderAgotados(); renderPrecios(); renderPromos(); renderResenas();
 window.panel = { archivo, get A() { return A; } };   // usado por las pruebas
 </script>
 </body>

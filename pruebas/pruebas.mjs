@@ -179,7 +179,7 @@ await prueba('agregar 2 perfumes de 60 ml en esencia árabe y armar el mensaje d
   assert.equal(boton, 'Agregar · $484');
   assert.equal(cuenta, '2');
   assert.ok(msg.includes('Perfume 60 ml · Caballero · Perseo verde oscuro · Esencia árabe · Aroma: Aroma de prueba'), msg);
-  assert.ok(msg.includes('2 × $242 = $484') && msg.includes('*Total: $484*') && msg.includes('Nombre: Ana') && msg.includes('Entrega: Punto de encuentro'), msg);
+  assert.ok(msg.includes('2 × $242 = $484') && msg.includes('*Total: $484*') && msg.includes('Nombre: Ana') && msg.includes('Entrega: Paso a recoger'), msg);
   assert.deepEqual(errors, []);
 });
 
@@ -382,9 +382,7 @@ await prueba('repetir el último pedido desde el carrito vacío', async () => {
 
 await prueba('negocio y reseñas desde ajustes.js (y no salen si están vacíos)', async () => {
   const a = await abrir({ ajustes: {} });
-  // sin horario ni reseñas: solo sale el costo del envío
-  const vacio = await a.page.isHidden('#resenas') && (await a.page.textContent('#negocio')).startsWith('Envío$50 a domicilio')
-    && !(await a.page.textContent('#negocio')).includes('Horario');
+  const vacio = await a.page.isHidden('#negocio') && await a.page.isHidden('#resenas');
   await a.ctx.close();
   const { ctx, page, errors } = await abrir({ ajustes: { negocio: { horario: 'Lunes a sábado de 10 a 7' }, resenas: [{ nombre: 'Ana', texto: 'Me encantó', estrellas: 5 }] } });
   const neg = await page.textContent('#negocio'), res = await page.textContent('#resenas');
@@ -440,69 +438,6 @@ await prueba('iconos de categorías con foto real de un producto', async () => {
   assert.equal(srcs.length, cats);
   for (const s of srcs) assert.ok(fs.existsSync(path.join(ROOT, s)), `falta ${s}`);
   assert.deepEqual(errors, []);
-});
-
-// agrega un body de $89 y abre el carrito con envío a domicilio
-async function carritoConEnvio(page) {
-  await page.click('.cat[data-cat="existencia"]');
-  await page.click('.card .add[data-open="ex-body-250"]');
-  await page.click('#pAgregar');
-  await page.click('#btnCarrito');
-  await page.check('input[name=entrega][value="Envío"]', { force: true });
-}
-
-await prueba('envío por distancia (tu ajuste): gratis a unas cuadras, $25 cerca, $50 lejos; punto de encuentro sin costo', async () => {
-  const { ctx, page, errors } = await abrir();
-  await carritoConEnvio(page);
-  const sinElegir = await page.textContent('#total');
-  const ops = await page.locator('#cZona option').allTextContents();
-  await page.selectOption('#cZona', '0'); const cerca = await page.textContent('#total');
-  await page.selectOption('#cZona', '1'); const colonia = await page.textContent('#total');
-  await page.selectOption('#cZona', '2'); const lejos = await page.textContent('#total');
-  await page.fill('#cDir', 'Calle 1, Centro');
-  const msg = await page.evaluate(() => window.tienda.mensaje());
-  const punto = await page.textContent('.seg label:has(input[value="Recoger"])');
-  const como = await page.textContent('#negocio');
-  await ctx.close();
-  assert.equal(sinElegir, '$89 + por confirmar');
-  assert.deepEqual(ops, ['Elige qué tan lejos estás', 'A unas cuadras · gratis', 'Mi colonia o colonias cercanas · $25', 'Más lejos · $50']);
-  assert.deepEqual([cerca, colonia, lejos], ['$89', '$114', '$139']);
-  assert.ok(msg.includes('Envío a domicilio (Más lejos): $50') && msg.includes('*Total: $139*'), msg);
-  assert.ok(punto.includes('Punto de encuentro') && punto.includes('sin costo'), punto);
-  assert.ok(como.includes('a unas cuadras gratis') && como.includes('punto de encuentro'), como);
-  assert.deepEqual(errors, []);
-});
-
-await prueba('envío a domicilio: suma $50 fijo al total y sale en el mensaje de WhatsApp', async () => {
-  const { ctx, page, errors } = await abrir({ ajustes: { envio: { costo: 50 } } });
-  await carritoConEnvio(page);
-  const total = await page.textContent('#total'), lineas = await page.textContent('#lineas');
-  await page.fill('#cDir', 'Calle 1, Centro');
-  const msg = await page.evaluate(() => window.tienda.mensaje());
-  await page.check('input[name=entrega][value="Recoger"]', { force: true });
-  const recoger = await page.textContent('#total');
-  await ctx.close();
-  assert.equal(total, '$139');
-  assert.ok(lineas.includes('$89') && lineas.includes('$50'), lineas);
-  assert.ok(msg.includes('Envío a domicilio: $50') && msg.includes('*Total: $139*'), msg);
-  assert.equal(recoger, '$89');
-  assert.deepEqual(errors, []);
-});
-
-await prueba('envío por zonas y envío gratis desde cierta compra (ajustes.js)', async () => {
-  const a = await abrir({ ajustes: { envio: { costo: 50, zonas: [{ nombre: 'Centro', costo: 30 }, { nombre: 'Lejos', costo: 80 }] } } });
-  await carritoConEnvio(a.page);
-  await a.page.selectOption('#cZona', '0'); const t1 = await a.page.textContent('#total');
-  await a.page.selectOption('#cZona', '1'); const t2 = await a.page.textContent('#total');
-  await a.page.selectOption('#cZona', 'otra'); const t3 = await a.page.textContent('#total');
-  await a.ctx.close();
-  const b = await abrir({ ajustes: { envio: { costo: 50, zonas: [], gratisDesde: 80 } } });
-  await carritoConEnvio(b.page);
-  const gratis = await b.page.textContent('#lineas'), t4 = await b.page.textContent('#total');
-  await b.ctx.close();
-  assert.deepEqual([t1, t2, t3], ['$119', '$169', '$89 + por confirmar']);
-  assert.ok(gratis.includes('gratis') && t4 === '$89', gratis + ' ' + t4);
-  assert.deepEqual([...a.errors, ...b.errors], []);
 });
 
 await prueba('Kit Keep Hands Clean a $49, "¡Últimas 2!" y no deja pedir más de 2; difusor de 95 ml a $82', async () => {
@@ -562,7 +497,6 @@ await prueba('pedido con envío: pide lugar, manda fecha y hora, y muestra "Pedi
   await page.click('#enviar');
   const sinLugar = await page.evaluate(() => window.__abiertos.length);
   await page.fill('#cDir', 'Av. Juárez 10, Centro');
-  await page.selectOption('#cZona', '1');      // colonia o cercanas: $25
   await page.fill('#cFecha', '2030-05-17');   // viernes
   await page.fill('#cHora', '17:30');          // en clases: avisa y no envía
   await page.dispatchEvent('#cHora', 'change');
