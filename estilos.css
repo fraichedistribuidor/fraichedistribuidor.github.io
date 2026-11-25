@@ -552,3 +552,12 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 /* categorías con foto real (img/categorias/, se hacen con herramientas/categorias.py) */
 .cat .ring.foto{background:#fff;overflow:hidden;border:1px solid var(--line)}
 .cat .ring.foto img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+/* calculadora de rellenos */
+#pFrasco{margin-top:4px}
+.calc{margin:10px 0 4px;padding:14px 16px;border-radius:var(--r-md);background:var(--accent-soft);display:flex;flex-direction:column;gap:8px}
+.calc>span{font-size:15px}
+.calc div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.calc div span{background:#fff;border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;align-items:center}
+.calc div small{color:var(--muted);font-size:12px}
+.calc div b{font-size:18px;color:var(--accent)}

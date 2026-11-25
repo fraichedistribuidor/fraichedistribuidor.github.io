@@ -98,7 +98,7 @@ await prueba('categoría Rellenos filtra y el título cambia', async () => {
   await page.click('.cat[data-cat="relleno"]');
   const titulo = await page.textContent('#titulo'), n = await page.locator('.card').count();
   await ctx.close();
-  assert.equal(titulo, 'Rellenos'); assert.equal(n, 13);
+  assert.equal(titulo, 'Rellenos'); assert.equal(n, 1);   // un solo relleno, con calculadora
   for (const c of ['envases', 'velas', 'maquillaje', 'ninos', 'casa']) {
     const { ctx: x, page: pg } = await abrir();
     if (!(await pg.locator(`.cat[data-cat="${c}"]`).count())) await pg.click('[data-mascats]');   // las demás categorías están en "Más"
@@ -247,21 +247,25 @@ await prueba('Envases: un botón por tamaño; el de 60 ml junta todos sus envase
   const cab = await page.locator('#pVar .var:visible .vn').allTextContents();
   await page.click('#pVar .var:visible:has-text("Bikendi · Vino")');
   const foto = await page.getAttribute('#pMedia img', 'src');
+  const fantasy = await page.evaluate(() => window.tienda.P.find(p => p.id === 'nuevo-60').var.filter(v => /Fantasy|Mermaid/.test(v.n)).length);
   await ctx.close();
   assert.ok(nombres.includes('Perfume 60 ml') && !nombres.some(n => /^(Liliana|Bikendi|Human|Lucha libre|Envase Copa|Pulpy|Capibu|Mystic)/.test(n)), nombres.join(', '));
   assert.ok(nombres.some(n => n.startsWith('Nicola Porcella')), 'Nicola Porcella va por aparte');
   assert.ok(total > 30, `solo ${total} envases de 60 ml`);
   assert.ok(cab.length < total && cab.includes('Bikendi · Vino') && !cab.some(n => /Liliana|Kelly/.test(n)), cab.join(', '));
   assert.ok(foto.includes('bikendi'), foto);
+  assert.equal(fantasy, 0, 'las colonias Fantasy no van en los frascos de 60 ml');
   assert.deepEqual(errors, []);
 });
 
-await prueba('relleno a tu medida: escribe los ml de su frasco y el precio se calcula entre los de la lista', async () => {
+await prueba('rellenos: uno solo, con calculadora por ml o por frasco Fraiche, y el precio sale entre los de la lista', async () => {
   const { ctx, page, errors } = await abrir();
   await page.click('.cat[data-cat="relleno"]');
   const nombres = await page.locator('.card h3').allTextContents();
   await page.click('.card .add[data-open="relleno-medida"]');
   const det = await page.textContent('#pDetalle');
+  await page.selectOption('#pFrasco', { label: 'Liliana · Melón · 60 ml' });
+  const mlFraiche = await page.inputValue('#pMl'), calc = await page.textContent('#pCalc');
   await page.fill('#pMl', '45');
   const linea = await page.textContent('#pOpciones label:has(input[value="linea"]) > b');
   await page.fill('#pMl', '10');
@@ -271,12 +275,13 @@ await prueba('relleno a tu medida: escribe los ml de su frasco y el precio se ca
   await page.click('#pAgregar');
   const msg = await page.evaluate(() => window.tienda.mensaje());
   await ctx.close();
-  assert.equal(nombres[0], 'Relleno de perfume a tu medida');
+  assert.deepEqual(nombres, ['Relleno de perfume']);
   assert.ok(!nombres.includes('Relleno 4 ml') && !nombres.includes('Relleno 13 ml'), nombres.join(', '));
   assert.ok(!det.includes('undefined'), det);
+  assert.equal(mlFraiche, '60'); assert.ok(calc.includes('60 ml') && calc.includes('$144') && calc.includes('$193'), calc);
   assert.equal(linea, '$109');   // entre 30 ml ($71) y 50 ml ($121)
   assert.equal(diez, '$21');     // igual que el relleno de 10 ml
-  assert.ok(msg.includes('Relleno de perfume a tu medida · 45 ml') && msg.includes('$109'), msg);
+  assert.ok(msg.includes('Relleno de perfume · 45 ml') && msg.includes('$109'), msg);
   assert.deepEqual(errors, []);
 });
 

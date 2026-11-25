@@ -14,11 +14,11 @@ const WHATSAPP = '525574348740';
 
 const CATS = [
   { id: 'todo', nombre: 'Todo', h: 172, ilus: 'set', titulo: 'Todo el catálogo' },
+  { id: 'nuevo', nombre: 'Perfumes', h: 172, ilus: 'frasco', titulo: 'Perfumes', nota: 'Elige el tamaño (de 10 a 120 ml): ahí ves todos sus frascos y escoges tu aroma, en esencia de línea, neeche o árabe.' },
+  { id: 'relleno', nombre: 'Rellenos', h: 38, ilus: 'relleno', titulo: 'Rellenos', nota: 'Escribe cuántos ml tiene tu frasco, o elige tu frasco Fraiche, y te digo el precio de tu relleno al momento.' },
   { id: 'existencia', nombre: 'En existencia', h: 150, ilus: 'body', titulo: 'En existencia · entrega inmediata', nota: 'Productos que ya tengo listos para entregarte hoy mismo, con foto real.' },
   { id: 'promos', nombre: 'Promociones', h: 20, ilus: 'kit', titulo: 'Promociones y precios especiales' },
   { id: 'aromas', nombre: 'Aromas', h: 38, ilus: 'frasco-chico', titulo: 'Aromas de la genealogía', nota: 'Busca tu perfume favorito por nombre, género o nota y pídelo en el tamaño que quieras.' },
-  { id: 'nuevo', nombre: 'Perfumes', h: 172, ilus: 'frasco', titulo: 'Perfumes', nota: 'Elige el tamaño (de 10 a 120 ml): ahí ves todos sus frascos y escoges tu aroma, en esencia de línea, neeche o árabe.' },
-  { id: 'relleno', nombre: 'Rellenos', h: 38, ilus: 'relleno', titulo: 'Rellenos', nota: 'Rellenamos tu frasco de cualquier tamaño con el aroma que elijas. Cuesta menos que uno nuevo.' },
   { id: 'envases', nombre: 'Envases', h: 172, ilus: 'frasco-grande', titulo: 'Envases de perfume', nota: 'Toca un tamaño para ver todos sus envases juntos; luego eliges el diseño y tu aroma. El precio depende del tamaño y la esencia.' },
   { id: 'regalos', nombre: 'Regalos', h: 38, ilus: 'kit', titulo: 'Kits y regalos' },
   { id: 'bodys', nombre: 'Bodys', h: 172, ilus: 'body', titulo: 'Lociones corporales y bodys' },
@@ -32,7 +32,7 @@ const CATS = [
   { id: 'casa', nombre: 'Casa y auto', h: 172, ilus: 'difusor', titulo: 'Casa y auto' },
   { id: 'accesorios', nombre: 'Accesorios', h: 38, ilus: 'kit', titulo: 'Cosmetiqueras, bolsas y más' },
 ];
-const PRINCIPALES = ['todo', 'existencia', 'promos', 'aromas', 'nuevo', 'relleno', 'envases'];
+const PRINCIPALES = ['todo', 'nuevo', 'relleno', 'existencia', 'promos', 'aromas', 'envases'];
 const TAGS = [
   { id: 'todo', nombre: 'Todo' },
   { id: 'existencia', nombre: 'En existencia' },
@@ -75,7 +75,7 @@ const sinMl = s => s.replace(/\s*·?\s*\d+ ml\b/i, '').trim().replace(/^·\s*/, 
 const minus = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // Todos los envases van con su tamaño (también Copa, Pulpy, Capibu, Human, Mystic Vibrations y Lucha libre, que son
 // rellenables y se venden como nuevos), menos Nicola Porcella, que va por aparte.
-const APARTE = ['nicola-porcella'];
+const APARTE = ['nicola-porcella', 'fantasy-colonia'];
 const TAMANOS = new Set((window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.ml).map(p => +p.ml));
 const tamanoDe = (e, v) => +((v && v.ml) || e.envase);
 const ENVASES = (window.CATALOGO || []).filter(p => p.envase && !APARTE.includes(p.id)
@@ -93,6 +93,9 @@ for (const nuevo of (window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.
   }
 }
 const AGRUPADOS = new Set(ENVASES.map(e => e.id));
+// frascos Fraiche por tamaño, de mayor a menor, para la calculadora de rellenos
+const FRASCOS_FR = (window.PRODUCTOS || []).filter(p => p.cat === 'nuevo' && p.ml && p.var && p.var.length)
+  .sort((a, b) => b.ml - a.ml).map(p => [p.ml, [...new Set(p.var.map(v => v.n.replace(/^(Dama y caballero|Dama|Caballero) · /, '')))]]);
 
 /* ---------- relleno a tu medida: el cliente trae su frasco de cualquier marca, desde 10 ml ---------- */
 // El precio sale de los rellenos de la lista: entre dos tamaños se reparte en proporción; arriba de 120 ml, al precio por ml del de 120.
@@ -339,6 +342,7 @@ function visibles() {
   return P.filter(p => {
     if (soloFavs && !favs.has(p.id)) return false;
     if (!soloFavs && !words.length && AGRUPADOS.has(p.id)) return false;   // ya están dentro de "Perfume X ml"
+    if (!soloFavs && !words.length && p.cat === 'relleno' && !p.medida) return false;   // los rellenos se calculan en "Relleno de perfume"
     const tamano = cat === 'envases' && p.cat === 'nuevo' && p.ml;           // en Envases, un botón por tamaño
     const especial = cat === 'existencia' ? !!p.existencia : cat === 'promos' ? p.tags.includes('oferta') || PROMO_IDS.has(p.id) || PROMO_CATS.has(p.cat) : null;
     if (!soloFavs && especial === false) return false;
@@ -425,7 +429,11 @@ function openProduct(id, op = {}) {
     : muchos ? `Elige una opción <small>${p.var.length} diseños${nEx ? ` · ${nEx} en existencia` : ''}</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
   $('#pVar').innerHTML = p.medida ? `<legend>¿Cuántos ml tiene tu frasco?</legend>
     <div class="medida"><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
-    <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>`
+    <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>
+    <label class="fld" for="pFrasco">¿Es un frasco Fraiche? Elígelo y te digo su tamaño</label>
+    <select id="pFrasco" class="vbusca"><option value="">No es Fraiche / no sé</option>${FRASCOS_FR.map(([ml, l]) =>
+      `<optgroup label="${ml} ml">${l.map(n => `<option value="${ml}">${esc(n)} · ${ml} ml</option>`).join('')}</optgroup>`).join('')}</select>
+    <div class="calc" id="pCalc" aria-live="polite"></div>`
   : p.var ? `<legend>${leyenda}</legend>`
     + (muchos ? `<input class="vbusca" id="pVarBusca" type="search" placeholder="${conGen ? 'Buscar frasco: Liliana, Perseo, Axel…' : 'Buscar por nombre'}" autocomplete="off" aria-label="Buscar">` : '')
     + (conGen ? `<div class="vgen" id="pVarGen">${['todos', 'Dama', 'Caballero'].map(g => `<button type="button" class="pill" data-vgen="${g}" aria-pressed="${g === 'todos'}">${g === 'todos' ? 'Todos' : g}</button>`).join('')}</div>` : '')
@@ -441,6 +449,13 @@ function openProduct(id, op = {}) {
   dlg.showModal();
   $('#formProducto').scrollTop = 0;
 }
+// resultado de la calculadora de rellenos: el precio de ese tamaño en cada esencia
+function renderCalc() {
+  const box = $('#pCalc'); if (!box || !actual || !actual.medida) return;
+  const ml = ML_MIN + vSel, pr = preciosDe(actual, vSel);
+  box.innerHTML = `<span>Tu relleno de <b>${ml} ml</b></span><div>${ESENCIAS.filter(e => pr[e.id] != null)
+    .map(e => `<span><small>${e.nombre.replace('Esencia ', '')}</small><b>${money(pr[e.id])}</b></span>`).join('')}</div>`;
+}
 function renderVariante() {
   const p = actual, x = p.var && p.var[vSel];
   $('#pMedia').innerHTML = art(p, vSel);
@@ -453,7 +468,7 @@ function renderVariante() {
   $('#pOpciones').innerHTML = '<legend>Esencia</legend>' + keys.map(e => `
     <label class="opt"><input type="radio" name="esencia" value="${e.id}" ${e.id === sel ? 'checked' : ''}>
       <span><b>${e.nombre}</b><small>${e.det}</small></span><b>${money(pr[e.id])}</b></label>`).join('');
-  updateBuy();
+  updateBuy(); renderCalc();
 }
 function esencia() { const r = $('#pOpciones input:checked'); return r ? r.value : (actual && preciosDe(actual, vSel) ? Object.keys(preciosDe(actual, vSel))[0] : 'linea'); }
 function updateBuy() {
@@ -780,6 +795,10 @@ $('#pVar').addEventListener('input', e => {
   if (e.target.id !== 'pMl') return;
   const ml = Math.round(+e.target.value);
   if (ml >= ML_MIN && ml <= ML_MAX) { vSel = ml - ML_MIN; renderVariante(); }
+});
+$('#pVar').addEventListener('change', e => {   // eligió su frasco Fraiche: se pone su tamaño
+  if (e.target.id !== 'pFrasco' || !e.target.value) return;
+  vSel = +e.target.value - ML_MIN; $('#pMl').value = e.target.value; renderVariante();
 });
 $('#pVar').addEventListener('focusout', e => {   // al salir del campo, se ajusta a la medida válida más cercana
   if (e.target.id === 'pMl') e.target.value = ML_MIN + vSel;
