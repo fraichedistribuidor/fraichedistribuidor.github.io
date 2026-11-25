@@ -297,7 +297,7 @@ await prueba('En existencia: fotos reales, precio de venta (sin costos) y sale e
   const datos = await page.evaluate(() => JSON.stringify(window.EXISTENCIAS));
   const fotos = await page.evaluate(() => window.EXISTENCIAS.flatMap(p => [p.img, ...(p.var || []).map(v => v.img)]).filter(Boolean));
   await ctx.close();
-  assert.ok(n >= 20 && badges === n, `${n} productos, ${badges} con etiqueta`);
+  assert.ok(n >= 20 && badges === n - 1, `${n} productos, ${badges} con etiqueta`);   // el kit dice "¡Últimas 2!"
   assert.ok(opciones > 50, `${opciones} diseños`);
   assert.equal(boton, 'Agregar · $89');
   assert.ok(!aroma, 'un producto terminado no pide aroma');
@@ -381,7 +381,7 @@ await prueba('repetir el último pedido desde el carrito vacío', async () => {
 });
 
 await prueba('negocio y reseñas desde ajustes.js (y no salen si están vacíos)', async () => {
-  const a = await abrir();
+  const a = await abrir({ ajustes: {} });
   // sin horario ni reseñas: solo sale el costo del envío
   const vacio = await a.page.isHidden('#resenas') && (await a.page.textContent('#negocio')).startsWith('Envío$50 a domicilio')
     && !(await a.page.textContent('#negocio')).includes('Horario');
@@ -483,6 +483,21 @@ await prueba('envío por zonas y envío gratis desde cierta compra (ajustes.js)'
   assert.deepEqual([...a.errors, ...b.errors], []);
 });
 
+await prueba('Kit Keep Hands Clean a $49, "¡Últimas 2!" y no deja pedir más de 2; difusor de 95 ml a $82', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.cat[data-cat="existencia"]');
+  const badge = await page.textContent('.card:has([data-open="ex-keep-hands"]) .badge');
+  await page.click('.card .add[data-open="ex-keep-hands"]');
+  for (let i = 0; i < 3; i++) await page.click('#pMas');
+  const cant = await page.textContent('#pCant'), boton = await page.textContent('#pAgregar');
+  const dif = await page.evaluate(() => { const p = window.tienda.P.find(x => x.id === 'difusores-95'); return [p.precios && p.precios.linea, !!p.prox]; });
+  await ctx.close();
+  assert.equal(badge, '¡Últimas 2!');
+  assert.equal(cant, '2'); assert.equal(boton, 'Agregar · $98');
+  assert.deepEqual(dif, [82, false]);
+  assert.deepEqual(errors, []);
+});
+
 await prueba('al elegir esencia neeche, el buscador de aromas muestra solo aromas neeche', async () => {
   const { ctx, page } = await abrir();
   await page.click('.cat[data-cat="nuevo"]');
@@ -525,8 +540,15 @@ await prueba('pedido con envío: pide lugar, manda fecha y hora, y muestra "Pedi
   await page.click('#enviar');
   const sinLugar = await page.evaluate(() => window.__abiertos.length);
   await page.fill('#cDir', 'Av. Juárez 10, Centro');
-  await page.fill('#cFecha', '2030-05-17');
-  await page.fill('#cHora', '17:30');
+  await page.fill('#cFecha', '2030-05-17');   // viernes
+  await page.fill('#cHora', '17:30');          // en clases: avisa y no envía
+  await page.dispatchEvent('#cHora', 'change');
+  const aviso = await page.textContent('#horaNota');
+  await page.click('#enviar');
+  const enClase = await page.evaluate(() => window.__abiertos.length);
+  await page.fill('#cHora', '12:30');
+  await page.dispatchEvent('#cHora', 'change');
+  const sinAviso = await page.isHidden('#horaNota');
   await page.click('#enviar');
   await page.waitForSelector('#dlgOk[open]');
   const url = await page.evaluate(() => window.__abiertos[0]);
@@ -536,7 +558,8 @@ await prueba('pedido con envío: pide lugar, manda fecha y hora, y muestra "Pedi
   const msg = decodeURIComponent(url.split('text=')[1]);
   assert.equal(sinLugar, 0, 'no debe enviar sin lugar de entrega');
   assert.ok(url.startsWith('https://wa.me/525574348740?text='), url);
-  assert.ok(msg.includes('Lugar de entrega: Av. Juárez 10, Centro') && /viernes, 17 de mayo, 17:30 h/.test(msg) && /\(F-\d{6}-\d{4}\)/.test(msg), msg);
+  assert.ok(aviso.includes('estoy en clases') && enClase === 0 && sinAviso, `${aviso} · ${enClase} · ${sinAviso}`);
+  assert.ok(msg.includes('Lugar de entrega: Av. Juárez 10, Centro') && /viernes, 17 de mayo, 12:30 h/.test(msg) && /\(F-\d{6}-\d{4}\)/.test(msg), msg);
   assert.ok(ok.includes('¡Pedido realizado!') && ok.includes('Av. Juárez 10') && ok.includes('acordamos contigo el lugar, la fecha y la hora'), ok);
   assert.equal(carrito, 0);
   assert.deepEqual(errors, []);

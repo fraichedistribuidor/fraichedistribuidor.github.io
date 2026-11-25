@@ -360,6 +360,7 @@ function visibles() {
 }
 function badgeOf(p) {
   if (p.agotado) return '<span class="badge dark">Agotado</span>';
+  if (p.quedan) return `<span class="badge oferta">¡Últimas ${p.quedan}!</span>`;
   if (p.existencia) return '<span class="badge exist">En existencia</span>';
   if (PROMO_IDS.has(p.id)) return '<span class="badge oferta">Promoción</span>';
   if (p.prox) return '<span class="badge dark">Próximamente</span>';
@@ -423,7 +424,7 @@ function openProduct(id, op = {}) {
   const dlg = $('#dlgProducto');
   dlg.style.setProperty('--h', c.h);
   $('#pNombre').textContent = p.nombre;
-  $('#pDetalle').textContent = p.cat === 'relleno' && p.ml ? `${p.detalle}. Trae tu frasco de ${p.ml} ml.` : p.medida ? `${p.detalle}. Lo rellenamos con el aroma que elijas.` : (p.detalle || '');
+  $('#pDetalle').textContent = p.cat === 'relleno' && p.ml ? `${p.detalle}. Trae tu frasco de ${p.ml} ml.` : p.medida ? `${p.detalle}. Lo rellenamos con el aroma que elijas.` : (p.detalle || '') + (p.quedan ? ` · Solo quedan ${p.quedan} piezas.` : '');
   const info = [p.notas && `<p><b>Notas:</b> ${esc(p.notas)}</p>`, p.desc && `<p>${esc(p.desc)}</p>`,
     p.incluye && `<p><b>Incluye:</b></p><ul>${p.incluye.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`].filter(Boolean).join('');
   $('#pInfo').innerHTML = info; $('#pInfo').hidden = !info;
@@ -652,6 +653,8 @@ function renderCount() {
 function addToCart(id, v, es, aroma, n) {
   const same = cart.find(it => it.id === id && it.v === v && it.esencia === es && it.aroma === aroma);
   if (same) same.cant += n; else cart.push({ id, v, esencia: es, aroma, cant: n });
+  const max = byId[id] && byId[id].quedan, it = same || cart[cart.length - 1];
+  if (max && it.cant > max) { it.cant = max; toast(`Solo quedan ${max} piezas`); }
   saveCart();
 }
 function renderCart() {
@@ -790,6 +793,8 @@ document.addEventListener('click', e => {
   if (t.dataset.i) { goSlide(+t.dataset.i); startAutoplay(); return; }
   if (t.dataset.inc || t.dataset.dec) {
     const i = +(t.dataset.inc || t.dataset.dec);
+    const max = byId[cart[i].id].quedan;
+    if (t.dataset.inc && max && cart[i].cant >= max) { toast(`Solo quedan ${max} piezas`); return; }
     cart[i].cant += t.dataset.inc ? 1 : -1; if (cart[i].cant < 1) cart.splice(i, 1);
     saveCart(); renderCart(); return;
   }
@@ -833,7 +838,11 @@ $('#pVar').addEventListener('focusout', e => {   // al salir del campo, se ajust
 $('#pOpciones').addEventListener('change', updateBuy);
 $('#pAroma').addEventListener('input', renderAromas);
 $('#pMenos').addEventListener('click', () => { cant = Math.max(1, cant - 1); updateBuy(); });
-$('#pMas').addEventListener('click', () => { cant = Math.min(99, cant + 1); updateBuy(); });
+$('#pMas').addEventListener('click', () => {   // si quedan pocas piezas, no deja pedir más de las que hay
+  const max = actual.quedan || 99;
+  if (cant >= max) toast(`Solo quedan ${max} piezas`);
+  cant = Math.min(max, cant + 1); updateBuy();
+});
 $('#formProducto').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value === 'add') {
     addToCart(actual.id, vSel, esencia(), pideAroma(actual) ? aromaTexto() : '', cant);
@@ -857,6 +866,7 @@ $('#enviar').addEventListener('click', () => {
   if (!WHATSAPP || !cart.length) return;
   const ent = entregaDatos();
   if (ent.envio && !ent.lugar) { toast('Escribe el lugar de entrega'); $('#cDir').focus(); return; }
+  if (ent.envio && horaOcupada()) { toast('A esa hora no hay entregas; elige otra'); $('#cHora').focus(); return; }
   folio = nuevoFolio();
   ultimoMensaje = mensaje();
   store.set('fr_ultimo', cart.map(it => ({ ...it })));
@@ -881,6 +891,20 @@ $('#okWa').addEventListener('click', () => { if (ultimoMensaje) abrirWhats(ultim
 $('#okCerrar').addEventListener('click', () => $('#dlgOk').close());
 const hoyISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 $('#cFecha').min = hoyISO();
+// horas en que no entregas (ajustes.js → negocio.ocupado): avisa al elegir fecha y hora
+const OCUPADO = ((AJ.negocio || {}).ocupado || []).filter(o => o && o.desde && o.hasta);
+function horaOcupada() {
+  const f = $('#cFecha').value, h = $('#cHora').value;
+  if (!f || !h) return null;
+  const dia = new Date(f + 'T12:00').getDay();
+  return OCUPADO.find(o => (o.dias || [0, 1, 2, 3, 4, 5, 6]).includes(dia) && h >= o.desde && h < o.hasta) || null;
+}
+function avisaHora() {
+  const o = horaOcupada();
+  $('#horaNota').hidden = !o;
+  $('#horaNota').textContent = o ? `${o.motivo || 'A esa hora no hay entregas'}; elige otra hora, por favor.` : '';
+}
+['#cFecha', '#cHora'].forEach(s => $(s).addEventListener('change', avisaHora));
 $('#slides').addEventListener('scroll', () => {
   const i = slideIndex(); document.querySelectorAll('#dots button').forEach((b, j) => b.setAttribute('aria-selected', i === j));
 }, { passive: true });

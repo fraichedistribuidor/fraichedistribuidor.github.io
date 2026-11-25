@@ -142,6 +142,10 @@ $('#prodIds').innerHTML = PRODS.map(p => `<option value="${esc(p.id)}">${esc(p.n
 
 const base = Object.assign({ negocio: {}, envio: { costo: 50, zonas: [], gratisDesde: 0 }, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
 let A = store.get('fr_panel') || JSON.parse(JSON.stringify(base));
+// lo que el panel no edita (horas ocupadas) se conserva de ajustes.js
+A.negocio = { ...A.negocio };
+if (!A.negocio.ocupado && (base.negocio || {}).ocupado) A.negocio.ocupado = base.negocio.ocupado;
+if (!A.negocio.horario && (base.negocio || {}).horario) A.negocio.horario = base.negocio.horario;
 const guarda = () => { store.set('fr_panel', A); $('#msg').textContent = ''; };
 
 // ---- negocio ----

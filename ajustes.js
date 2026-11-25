@@ -4,10 +4,13 @@
 window.AJUSTES = {
   // Tu negocio: se muestra en "Cómo pedir" y en el pie de página.
   negocio: {
-    horario: '',      // ej. 'Lunes a sábado de 10:00 a 19:00'
+    horario: 'Lunes a viernes, excepto de 5:00 a 9:00 pm · Sábado y domingo, todo el día',
     zona: '',         // ej. 'Entregas en Cuautitlán, Cuautitlán Izcalli y Tultitlán'
     direccion: '',    // ej. 'Punto de entrega: Plaza Centro, local 12'
     mapa: '',         // enlace de Google Maps (opcional)
+    // Horas en que no puedes entregar (dias: 0 = domingo, 1 = lunes … 6 = sábado). Si el cliente elige una,
+    // la página le avisa y le pide otra hora.
+    ocupado: [{ dias: [1, 2, 3, 4, 5], desde: '17:00', hasta: '21:00', motivo: 'De lunes a viernes de 5:00 a 9:00 pm estoy en clases' }],
   },
   // Envío a domicilio: costo fijo; si pones zonas, el cliente elige la suya y se cobra su costo.
   // gratisDesde: envío gratis cuando la compra llega a esa cantidad (0 = nunca).

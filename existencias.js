@@ -1,6 +1,6 @@
 // Productos que ya tienes en existencia (Recurso 2 · Producto terminado), para entrega inmediata.
 // Fotos reales recortadas en img/existencia/. Precio = tu precio de venta (sin costos).
-// precio: null = "Pregunta" (precio por confirmar). Para quitar uno que se acabó, ponle agotado:true
+// precio: null = "Pregunta" (precio por confirmar). quedan: 2 = pocas piezas (sale "¡Últimas 2!"). Para quitar uno que se acabó, ponle agotado:true
 // (o agotado:true a una variante); para quitarlo de la página, borra su línea.
 (function () {
   const F = n => `img/existencia/${n}.webp`;
@@ -31,7 +31,7 @@
       var: V('paquete-', [['Gelató Collection', 'gelato-collection'], ['Samurai Pet', 'samurai-pet'], ['Country and City Kids', 'country-and-city-kids']]) },
     { id: 'ex-protector', cat: 'cremas', nombre: 'Protector solar Fun in the Sun', tipo: 'Protector solar FPS 50+',
       var: [{ n: 'Facial 50 ml', img: F('fun-in-the-sun-facial'), precio: 179 }, { n: 'Corporal 150 ml', img: F('fun-in-the-sun-corporal'), precio: 205.5 }] },
-    { id: 'ex-keep-hands', cat: 'cremas', nombre: 'Kit Keep Hands Clean', tipo: 'Kit de higiene', precio: null, img: F('keep-hands-clean') },
+    { id: 'ex-keep-hands', cat: 'cremas', nombre: 'Kit Keep Hands Clean', tipo: 'Kit de higiene', precio: 49, quedan: 2, img: F('keep-hands-clean') },
     { id: 'ex-fraicheur', cat: 'casa', nombre: 'Fraicheur Mandarina', tipo: 'Aromatizante en spray', cont: '125 ml', precio: 57, img: F('fraicheur-mandarina') },
     { id: 'ex-max-repel', cat: 'cremas', nombre: 'Max Repel', tipo: 'Repelente de insectos', cont: '70 ml', precio: 40, img: F('max-repel') },
     { id: 'ex-bold', cat: 'desodorantes', nombre: 'Bold desodorante', tipo: 'Desodorante en aerosol', cont: '150 ml', precio: 69, img: F('bold-desodorante') },
