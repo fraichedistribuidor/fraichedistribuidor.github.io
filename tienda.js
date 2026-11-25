@@ -123,6 +123,9 @@ const REPETIDOS = ['kit-for-you', 'set-destilados'];
 // primero los perfumes (nuevos y rellenos), después el resto del catálogo
 const PERF = (window.PRODUCTOS || []).filter(p => (p.cat === 'nuevo' || p.cat === 'relleno' || p.mostrar) && !REPETIDOS.includes(p.id));
 const AJ = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
+// envío a domicilio (ajustes.js): costo fijo, o por zona si hay zonas; gratis desde cierta compra (0 = nunca)
+const ENVIO = Object.assign({ costo: 50, zonas: [], gratisDesde: 0 }, AJ.envio || {});
+const ZONAS = (ENVIO.zonas || []).filter(z => z && z.nombre);
 /* ---------- bodys: un solo "Body mist 250 ml" ($89) y un solo "Body mist 100 ml" ($60) ---------- */
 // Juntan los diseños que tienes en existencia (primero, marcados) y todos los del catálogo de esa medida,
 // sin repetir nombres. Los bodys sueltos del catálogo ya no salen en la lista (el buscador sí los encuentra).
@@ -150,6 +153,8 @@ const nombreBody = p => p.nombre.replace(/\s*·.*$/, '').replace(/\s*loci[oó]n\
     AGRUPADOS.add(p.id);
   }
   AGRUPADOS.add('neeche-sprays');
+  // la línea Clean del catálogo decía "Próximamente", pero ya la tienes en existencia (Línea Clean y Relax Time)
+  ['skincare-agua-micelar', 'skincare-serum', 'skincare-contorno', 'skincare-crema'].forEach(id => AGRUPADOS.add(id));
 })();
 
 // lo que ya tienes: mismo formato que el resto (precio único o por opción)
@@ -287,7 +292,7 @@ function slideProducto(p, kick, tono) {
 }
 let SLIDES = [];
 function armaSlides() {
-  const cat = P.filter(p => p.pag && p.img);
+  const cat = P.filter(p => p.pag && p.img && !AGRUPADOS.has(p.id));
   const novedades = cat.filter(p => p.prox || p.pag <= 40);          // las primeras páginas del catálogo son las novedades
   const nov = azar(novedades).slice(0, 3).map(p => slideProducto(p, p.prox ? 'Próximamente' : 'Novedad', AQUA));
   const otros = azar(cat.filter(p => !novedades.includes(p) && minPrice(p))).slice(0, 3).map(p => slideProducto(p, 'Te va a gustar', BEIGE));
@@ -627,7 +632,17 @@ $('#pVar').addEventListener('click', e => {
 $('#pVar').addEventListener('input', e => { if (e.target.id === 'pVarBusca') filtraFrascos(); });
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
-const total = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
+const subtotal = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
+// costo del envío: 0 si pasa a recoger; null = por confirmar (zona que no está en la lista)
+function costoEnvio() {
+  if (!entregaDatos().envio) return 0;
+  if (ENVIO.gratisDesde > 0 && subtotal() >= ENVIO.gratisDesde) return 0;
+  if (!ZONAS.length) return +ENVIO.costo || 0;
+  const z = ZONAS[+($('#cZona') || {}).value];
+  return z ? +z.costo || 0 : null;
+}
+const total = () => subtotal() + (costoEnvio() || 0);
+const textoEnvio = () => { const c = costoEnvio(); return c == null ? 'por confirmar' : c === 0 ? 'gratis' : money(c); };
 const porConfirmar = () => cart.some(it => unitario(it) == null);
 function saveCart() { store.set('fr_cart', cart); renderCount(); }
 function renderCount() {
@@ -654,10 +669,19 @@ function renderCart() {
   $('#repetir').hidden = cart.length > 0 || !ult.length;
   $('#repetir').textContent = `Repetir mi último pedido (${ult.reduce((a, it) => a + it.cant, 0)} productos)`;
   $('#checkout').hidden = cart.length === 0;
-  $('#total').textContent = money(total()) + (porConfirmar() ? ' + por confirmar' : '');
+  renderTotales();
   $('#enviar').disabled = !WHATSAPP;
   $('#waNota').textContent = WHATSAPP ? 'Se abre WhatsApp con tu pedido escrito. Te confirmo existencias, pago y entrega.'
     : 'Pronto podrás mandar tu pedido por WhatsApp desde aquí.';
+}
+function renderTotales() {
+  const envio = entregaDatos().envio;
+  $('#lineas').hidden = !envio;
+  $('#lineas').innerHTML = envio ? `<div><span>Productos</span><span>${money(subtotal())}</span></div><div><span>Envío a domicilio</span><span>${textoEnvio()}</span></div>` : '';
+  $('#total').textContent = money(total()) + (porConfirmar() || costoEnvio() == null ? ' + por confirmar' : '');
+  const falta = ENVIO.gratisDesde > 0 && envio ? ENVIO.gratisDesde - subtotal() : 0;
+  $('#envioNota').hidden = !(falta > 0);
+  $('#envioNota').textContent = falta > 0 ? `Te faltan ${money(falta)} para que el envío sea gratis.` : '';
 }
 const fechaBonita = f => f ? new Date(f + 'T12:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
 function entregaDatos() {
@@ -676,7 +700,10 @@ function mensaje() {
     return `${i + 1}. ${p.nombre}${det ? ' · ' + det : ''}\n   ${it.cant} × ${u == null ? 'precio por confirmar' : `${money(u)} = ${money(u * it.cant)}`}`;
   });
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(', ');
-  return [`¡Hola! Quiero hacer este pedido${folio ? ' (' + folio + ')' : ''}:`, '', ...lineas, '', `*Total: ${money(total())}${porConfirmar() ? ' + productos por confirmar' : ''}*`, '',
+  const zona = ent.envio && ZONAS.length ? (ZONAS[+$('#cZona').value] || { nombre: 'Otra zona' }).nombre : '';
+  return [`¡Hola! Quiero hacer este pedido${folio ? ' (' + folio + ')' : ''}:`, '', ...lineas, '',
+    ent.envio ? `Productos: ${money(subtotal())}` : null, ent.envio ? `Envío a domicilio${zona ? ' (' + zona + ')' : ''}: ${textoEnvio()}` : null,
+    `*Total: ${money(total())}${porConfirmar() || costoEnvio() == null ? ' + por confirmar' : ''}*`, '',
     nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Envío a domicilio' : 'Paso a recoger'}`,
     ent.envio && ent.lugar ? `Lugar de entrega: ${ent.lugar}` : null,
     ent.envio && cuando ? `Fecha y hora que prefiero: ${cuando}` : null,
@@ -815,7 +842,15 @@ $('#formProducto').addEventListener('submit', e => {
   }
 });
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));   // tocar fuera cierra
-document.querySelectorAll('input[name=entrega]').forEach(r => r.addEventListener('change', () => { $('#dirBox').hidden = r.value !== 'Envío' || !r.checked; }));
+document.querySelectorAll('input[name=entrega]').forEach(r => r.addEventListener('change', () => { $('#dirBox').hidden = r.value !== 'Envío' || !r.checked; renderTotales(); }));
+// zonas de envío (si las pusiste en el panel) y el costo en el botón de envío
+if (ZONAS.length) {
+  $('#zonaBox').hidden = false;
+  $('#cZona').innerHTML = ZONAS.map((z, i) => `<option value="${i}">${esc(z.nombre)} · ${+z.costo ? money(+z.costo) : 'gratis'}</option>`).join('')
+    + '<option value="otra">Otra zona (te confirmo el costo)</option>';
+  $('#cZona').addEventListener('change', renderTotales);
+}
+$('#envioCosto').textContent = ZONAS.length ? 'según tu zona' : +ENVIO.costo ? `+${money(+ENVIO.costo)}` : 'gratis';
 let ultimoMensaje = '';
 const abrirWhats = m => window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(m)}`, '_blank', 'noopener');
 $('#enviar').addEventListener('click', () => {
@@ -832,7 +867,7 @@ $('#enviar').addEventListener('click', () => {
 function pedidoRealizado(ent) {
   const n = cart.reduce((a, it) => a + it.cant, 0);
   $('#okFolio').textContent = `Folio ${folio}`;
-  $('#okResumen').innerHTML = `<span>${n} ${n === 1 ? 'producto' : 'productos'}</span><b>${money(total())}${porConfirmar() ? ' + por confirmar' : ''}</b>`;
+  $('#okResumen').innerHTML = `<span>${n} ${n === 1 ? 'producto' : 'productos'}${ent.envio ? ` + envío ${textoEnvio()}` : ''}</span><b>${money(total())}${porConfirmar() || costoEnvio() == null ? ' + por confirmar' : ''}</b>`;
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(' a las ');
   $('#okEntrega').innerHTML = ent.envio
     ? `<b>Envío a domicilio</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp acordamos contigo el lugar, la fecha y la hora exactos de la entrega.</p>`
@@ -956,7 +991,11 @@ function repetirPedido() {
 
 /* ---------- tu negocio y reseñas (ajustes.js) ---------- */
 function renderNegocio() {
-  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
+  const n = AJ.negocio || {};
+  const envio = ZONAS.length ? `Según tu zona: ${ZONAS.map(z => `${z.nombre} ${+z.costo ? money(+z.costo) : 'gratis'}`).join(' · ')}`
+    : +ENVIO.costo ? `${money(+ENVIO.costo)} a domicilio` : 'Gratis';
+  const filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Envío', envio + (ENVIO.gratisDesde > 0 ? ` · gratis desde ${money(ENVIO.gratisDesde)}` : '') + '. También puedes pasar a recoger sin costo.'],
+    ['Dónde', n.direccion]].filter(([, v]) => v);
   const mapa = n.mapa && /^https:\/\//.test(n.mapa) ? `<a class="mas" href="${esc(n.mapa)}" target="_blank" rel="noopener">Ver en el mapa</a>` : '';
   $('#negocio').hidden = !filas.length && !mapa;
   $('#negocio').innerHTML = filas.map(([k, v]) => `<div><b>${k}</b><span>${esc(v)}</span></div>`).join('') + mapa;

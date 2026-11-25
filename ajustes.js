@@ -9,6 +9,10 @@ window.AJUSTES = {
     direccion: '',    // ej. 'Punto de entrega: Plaza Centro, local 12'
     mapa: '',         // enlace de Google Maps (opcional)
   },
+  // Envío a domicilio: costo fijo; si pones zonas, el cliente elige la suya y se cobra su costo.
+  // gratisDesde: envío gratis cuando la compra llega a esa cantidad (0 = nunca).
+  // ej. zonas: [{ nombre: 'Cuautitlán', costo: 40 }, { nombre: 'Izcalli', costo: 60 }]
+  envio: { costo: 50, zonas: [], gratisDesde: 0 },
   // Productos agotados: el id del producto, o 'id:Nombre de la opción' para una sola opción.
   // ej. ['ex-veladoras:Tierna Lavanda', 'kit-papa']
   agotados: [],

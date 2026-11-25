@@ -382,7 +382,9 @@ await prueba('repetir el último pedido desde el carrito vacío', async () => {
 
 await prueba('negocio y reseñas desde ajustes.js (y no salen si están vacíos)', async () => {
   const a = await abrir();
-  const vacio = await a.page.isHidden('#negocio') && await a.page.isHidden('#resenas');
+  // sin horario ni reseñas: solo sale el costo del envío
+  const vacio = await a.page.isHidden('#resenas') && (await a.page.textContent('#negocio')).startsWith('Envío$50 a domicilio')
+    && !(await a.page.textContent('#negocio')).includes('Horario');
   await a.ctx.close();
   const { ctx, page, errors } = await abrir({ ajustes: { negocio: { horario: 'Lunes a sábado de 10 a 7' }, resenas: [{ nombre: 'Ana', texto: 'Me encantó', estrellas: 5 }] } });
   const neg = await page.textContent('#negocio'), res = await page.textContent('#resenas');
@@ -438,6 +440,47 @@ await prueba('iconos de categorías con foto real de un producto', async () => {
   assert.equal(srcs.length, cats);
   for (const s of srcs) assert.ok(fs.existsSync(path.join(ROOT, s)), `falta ${s}`);
   assert.deepEqual(errors, []);
+});
+
+// agrega un body de $89 y abre el carrito con envío a domicilio
+async function carritoConEnvio(page) {
+  await page.click('.cat[data-cat="existencia"]');
+  await page.click('.card .add[data-open="ex-body-250"]');
+  await page.click('#pAgregar');
+  await page.click('#btnCarrito');
+  await page.check('input[name=entrega][value="Envío"]', { force: true });
+}
+
+await prueba('envío a domicilio: suma $50 fijo al total y sale en el mensaje de WhatsApp', async () => {
+  const { ctx, page, errors } = await abrir();
+  await carritoConEnvio(page);
+  const total = await page.textContent('#total'), lineas = await page.textContent('#lineas');
+  await page.fill('#cDir', 'Calle 1, Centro');
+  const msg = await page.evaluate(() => window.tienda.mensaje());
+  await page.check('input[name=entrega][value="Recoger"]', { force: true });
+  const recoger = await page.textContent('#total');
+  await ctx.close();
+  assert.equal(total, '$139');
+  assert.ok(lineas.includes('$89') && lineas.includes('$50'), lineas);
+  assert.ok(msg.includes('Envío a domicilio: $50') && msg.includes('*Total: $139*'), msg);
+  assert.equal(recoger, '$89');
+  assert.deepEqual(errors, []);
+});
+
+await prueba('envío por zonas y envío gratis desde cierta compra (ajustes.js)', async () => {
+  const a = await abrir({ ajustes: { envio: { costo: 50, zonas: [{ nombre: 'Centro', costo: 30 }, { nombre: 'Lejos', costo: 80 }] } } });
+  await carritoConEnvio(a.page);
+  const t1 = await a.page.textContent('#total');
+  await a.page.selectOption('#cZona', '1'); const t2 = await a.page.textContent('#total');
+  await a.page.selectOption('#cZona', 'otra'); const t3 = await a.page.textContent('#total');
+  await a.ctx.close();
+  const b = await abrir({ ajustes: { envio: { costo: 50, gratisDesde: 80 } } });
+  await carritoConEnvio(b.page);
+  const gratis = await b.page.textContent('#lineas'), t4 = await b.page.textContent('#total');
+  await b.ctx.close();
+  assert.deepEqual([t1, t2, t3], ['$119', '$169', '$89 + por confirmar']);
+  assert.ok(gratis.includes('gratis') && t4 === '$89', gratis + ' ' + t4);
+  assert.deepEqual([...a.errors, ...b.errors], []);
 });
 
 await prueba('al elegir esencia neeche, el buscador de aromas muestra solo aromas neeche', async () => {
