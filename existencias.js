@@ -13,8 +13,10 @@
       var: [{ n: 'Clean Contorno de ojos 20 g', img: F('clean-contorno-ojos'), precio: 96 }, { n: 'Clean Sérum facial 55 ml', img: F('clean-serum-facial'), precio: 126 },
         { n: 'Clean Agua micelar 255 ml', img: F('clean-agua-micelar'), precio: 79 }, { n: 'Clean Crema facial 100 g', img: F('clean-crema-facial'), precio: 116 },
         { n: 'Relax Time Sérum facial 55 ml', img: F('relax-time-serum'), precio: 146 }] },
-    { id: 'ex-veladoras', cat: 'velas', nombre: 'Veladoras', tipo: 'Vela aromática', cont: '250 g', precio: 229,
-      var: V('vela-', [['Encanto de Azahar', 'encanto-de-azahar'], ['Tierna Lavanda', 'tierna-lavanda']]) },
+    { id: 'ex-veladoras', cat: 'velas', nombre: 'Veladoras', tipo: 'Vela aromática', cont: '250 g', precio: 179,
+      var: V('vela-', [['Encanto de Azahar', 'encanto-de-azahar'], ['Tierna Lavanda', 'tierna-lavanda']]).concat([
+        { n: 'Full Cycle', img: F('vela-full-cycle') }, { n: 'Pastel de Cumpleaños', img: F('vela-pastel-de-cumpleanos') },
+        { n: 'Bella', img: F('vela-bella') }, { n: 'Flor Eterna' }]) },
     { id: 'ex-pillow-mist', cat: 'casa', nombre: 'Pillow Mist Brisa de Verano', tipo: 'Fragancia textil', cont: '250 ml', precio: 99, img: F('pillow-mist-brisa-de-verano') },
     { id: 'ex-hair-mist', cat: 'cabello', nombre: 'Hair Mist Flor de Cactus', tipo: 'Perfume para cabello', cont: '150 ml', precio: 108, img: F('hair-mist-flor-de-cactus') },
     { id: 'ex-afeitar', cat: 'cremas', nombre: 'Para afeitar', tipo: 'Cuidado masculino',

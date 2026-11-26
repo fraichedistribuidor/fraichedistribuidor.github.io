@@ -152,6 +152,8 @@ const nombreBody = p => p.nombre.replace(/\s*·.*$/, '').replace(/\s*loci[oó]n\
   AGRUPADOS.add('neeche-sprays');
   // la línea Clean del catálogo decía "Próximamente", pero ya la tienes en existencia (Línea Clean y Relax Time)
   ['skincare-agua-micelar', 'skincare-serum', 'skincare-contorno', 'skincare-crema'].forEach(id => AGRUPADOS.add(id));
+  // Full Cycle y Pastel de Cumpleaños ya están en tus Veladoras en existencia
+  ['vela-full-cycle', 'vela-cumpleanos'].forEach(id => AGRUPADOS.add(id));
 })();
 
 // lo que ya tienes: mismo formato que el resto (precio único o por opción)

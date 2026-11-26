@@ -156,13 +156,13 @@ await prueba('producto con aroma fijo: no pide aroma y respeta el precio especia
   const { ctx, page } = await abrir();
   await page.click('.pill[data-tag="oferta"]');
   const n = await page.locator('.card').count();
-  await page.click('#btnBuscar'); await page.fill('#q', 'nuestra cancion');
-  await page.click('.card .add[data-open="vela-nuestra-cancion"]');
+  await page.click('#btnBuscar'); await page.fill('#q', 'cosmetiquera tricolor');
+  await page.click('.card .add[data-open="cosmetiquera-tricolor"]');
   const aroma = await page.isVisible('#pAroma');
   const boton = await page.textContent('#pAgregar');
   await ctx.close();
   assert.ok(n >= 12, `solo ${n} con precio especial`);   // los bodys de $42 ahora van en el de 250 ml a $89
-  assert.equal(aroma, false); assert.equal(boton, 'Agregar · $77');
+  assert.equal(aroma, false); assert.equal(boton, 'Agregar · $51');
 });
 
 await prueba('agregar 2 perfumes de 60 ml en esencia árabe y armar el mensaje de WhatsApp', async () => {
