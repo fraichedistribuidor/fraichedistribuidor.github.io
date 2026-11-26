@@ -709,8 +709,12 @@ function entregaDatos() {
   return { envio, lugar: $('#cDir').value.trim(), fecha: $('#cFecha').value, hora: $('#cHora').value };
 }
 let folio = '';
+// folio único: fecha y hora + 4 caracteres al azar (sin letras que se confundan: 0/O, 1/I/L).
+// Hay más de 900 mil combinaciones por minuto, así que dos pedidos nunca comparten folio.
+const ALFA = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const azarFolio = n => { const a = new Uint32Array(n); (window.crypto || window.msCrypto).getRandomValues(a); return [...a].map(x => ALFA[x % ALFA.length]).join(''); };
 const nuevoFolio = () => { const d = new Date(), z = n => String(n).padStart(2, '0');
-  return `F-${z(d.getDate())}${z(d.getMonth() + 1)}${String(d.getFullYear()).slice(2)}-${z(d.getHours())}${z(d.getMinutes())}`; };
+  return `F-${z(d.getDate())}${z(d.getMonth() + 1)}${String(d.getFullYear()).slice(2)}-${z(d.getHours())}${z(d.getMinutes())}-${azarFolio(4)}`; };
 function mensaje() {
   const ent = entregaDatos();
   const nombre = $('#cNombre').value.trim(), notas = $('#cNotas').value.trim();
