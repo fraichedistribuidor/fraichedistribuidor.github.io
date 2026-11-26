@@ -572,7 +572,7 @@ await prueba('sección Aromas: filtra por género (Caballero) y esencia (árabe)
 });
 
 await prueba('pedido con envío: pide lugar, manda fecha y hora, y muestra "Pedido realizado"', async () => {
-  const { ctx, page, errors } = await abrir();
+  const { ctx, page, errors } = await abrir({ ajustes: { negocio: { ocupado: [{ dias: [1, 2, 3, 4, 5], desde: '17:00', hasta: '21:00', motivo: 'De lunes a viernes de 5:00 a 9:00 pm estoy en clases' }] } } });
   await page.evaluate(() => { window.__abiertos = []; window.open = (u) => { window.__abiertos.push(u); return null; }; });
   await page.click('.cat[data-cat="nuevo"]');
   await page.click('.card .add[data-open="nuevo-16"]');
