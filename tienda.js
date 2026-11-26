@@ -630,7 +630,41 @@ $('#pVar').addEventListener('click', e => {
 $('#pVar').addEventListener('input', e => { if (e.target.id === 'pVarBusca') filtraFrascos(); });
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
-const total = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
+/* ---------- tarjeta de fidelidad: un sello por pedido; en la 8ª compra, 10% de descuento ---------- */
+// Se guarda en el celular del cliente. Cada pedido de WhatsApp dice en qué compra va; en la 8ª incluye los folios
+// anteriores para que el vendedor verifique que fueron compras reales antes de dar el descuento.
+const META = 8, DESC = 0.10;
+const tarjeta = () => Object.assign({ sellos: [], canjes: 0 }, store.get('fr_tarjeta', {}) || {});
+const compraNum = () => Math.min(tarjeta().sellos.length + 1, META);
+const tocaDescuento = () => compraNum() === META;
+const subtotal = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
+const descuento = () => tocaDescuento() ? Math.round(subtotal() * DESC) : 0;
+const total = () => subtotal() - descuento();
+function sellar() {
+  const t = tarjeta();
+  t.sellos.push({ folio, fecha: hoyISO(), total: total() });
+  if (t.sellos.length >= META) { t.sellos = []; t.canjes++; }
+  store.set('fr_tarjeta', t); renderSellos();
+}
+function renderSellos() {   // contador en la barra de abajo
+  const n = tarjeta().sellos.length;
+  $('#sellosNav').hidden = !n; $('#sellosNav').textContent = n;
+}
+function renderTarjeta() {
+  const t = tarjeta(), n = t.sellos.length, faltan = META - n;
+  $('#tarjetaCard').innerHTML = `<div class="tj-top"><img src="img/logo/logo-96.png" alt="" width="40" height="40"><div><b>Tarjeta de fidelidad</b><small>Distribuidor Independiente Fraiche</small></div></div>
+    <div class="tj-sellos">${Array.from({ length: META }, (_, i) => {
+      const lleno = i < n, premio = i === META - 1;
+      return `<span class="tj-s${lleno ? ' lleno' : ''}${premio ? ' premio' : ''}" style="--i:${i}" aria-label="${premio ? 'Compra 8: 10% de descuento' : 'Compra ' + (i + 1)}${lleno ? ' (sellada)' : ''}">${lleno
+        ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : premio ? '<b>10%</b>' : `<i>${i + 1}</i>`}</span>`;
+    }).join('')}</div>
+    ${t.canjes ? `<small class="tj-canjes">Tarjetas completadas: ${t.canjes}</small>` : ''}`;
+  $('#tjEstado').innerHTML = faltan === 1 ? '🎉 <b>¡Tu próxima compra tiene 10% de descuento!</b>'
+    : n ? `Llevas <b>${n} de ${META}</b> compras. Te faltan <b>${faltan - 1}</b> para tu descuento del 10% en la 8ª.`
+      : `Aún no tienes sellos. Haz tu primer pedido y empieza a juntar: en tu <b>8ª compra</b> tienes <b>10% de descuento</b>.`;
+  $('#tjHist').innerHTML = n ? `<b>Tus compras en esta tarjeta</b><ul>${t.sellos.map((s, i) =>
+    `<li><span>${i + 1}. Folio ${esc(s.folio)}</span><span>${s.fecha ? new Date(s.fecha + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : ''}${s.total ? ' · ' + money(s.total) : ''}</span></li>`).join('')}</ul>` : '';
+}
 const porConfirmar = () => cart.some(it => unitario(it) == null);
 function saveCart() { store.set('fr_cart', cart); renderCount(); }
 function renderCount() {
@@ -660,6 +694,11 @@ function renderCart() {
   $('#repetir').textContent = `Repetir mi último pedido (${ult.reduce((a, it) => a + it.cant, 0)} productos)`;
   $('#checkout').hidden = cart.length === 0;
   $('#total').textContent = money(total()) + (porConfirmar() ? ' + por confirmar' : '');
+  const d = descuento();
+  $('#lineas').hidden = !d;
+  $('#lineas').innerHTML = d ? `<div><span>Productos</span><span>${money(subtotal())}</span></div><div class="desc"><span>Tarjeta de fidelidad · 8ª compra −10%</span><span>−${money(d)}</span></div>` : '';
+  $('#tarjetaNota').innerHTML = tocaDescuento() ? '🎉 Es tu <b>8ª compra</b>: ya tiene tu <b>10% de descuento</b>.'
+    : `Con este pedido sumas tu sello <b>${compraNum()} de ${META}</b>. En la 8ª compra tienes 10% de descuento.`;
   $('#enviar').disabled = !WHATSAPP;
   $('#waNota').textContent = WHATSAPP ? 'Se abre WhatsApp con tu pedido escrito. Te confirmo existencias, pago y entrega.'
     : 'Pronto podrás mandar tu pedido por WhatsApp desde aquí.';
@@ -681,7 +720,12 @@ function mensaje() {
     return `${i + 1}. ${p.nombre}${det ? ' · ' + det : ''}\n   ${it.cant} × ${u == null ? 'precio por confirmar' : `${money(u)} = ${money(u * it.cant)}`}`;
   });
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(', ');
-  return [`¡Hola! Quiero hacer este pedido${folio ? ' (' + folio + ')' : ''}:`, '', ...lineas, '', `*Total: ${money(total())}${porConfirmar() ? ' + productos por confirmar' : ''}*`, '',
+  const d = descuento(), previos = tarjeta().sellos.map(s => s.folio).filter(Boolean);
+  return [`¡Hola! Quiero hacer este pedido${folio ? ' (' + folio + ')' : ''}:`, '', ...lineas, '',
+    d ? `Productos: ${money(subtotal())}` : null, d ? `Descuento tarjeta de fidelidad (8ª compra, 10%): −${money(d)}` : null,
+    `*Total: ${money(total())}${porConfirmar() ? ' + productos por confirmar' : ''}*`, '',
+    `Tarjeta de fidelidad: compra ${compraNum()} de ${META}${d ? ' 🎉' : ''}`,
+    d && previos.length ? `Mis compras anteriores: ${previos.join(', ')}` : null, '',
     nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Envío a domicilio' : 'Paso a recoger'}`,
     ent.envio && ent.lugar ? `Lugar de entrega: ${ent.lugar}` : null,
     ent.envio && cuando ? `Fecha y hora que prefiero: ${cuando}` : null,
@@ -733,7 +777,7 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add
 document.addEventListener('click', e => {
   const t = e.target.closest('button, a'); if (!t) return;
   if (t.dataset.mascats) { masCats = !masCats; renderCats(); return; }
-  if (t.dataset.quiz) { abrirQuiz(); return; }
+  if (t.dataset.quiz) { const dl = t.closest('dialog[open]'); if (dl) dl.close(); abrirQuiz(); return; }
   if (t.dataset.parecido) {
     const a = AROMAS[+t.dataset.parecido];
     if ($('#dlgTam').open) abrirTamanos(a); else { aromaSel = a; renderAromas(); }
@@ -777,11 +821,7 @@ document.addEventListener('click', e => {
   const go = t.dataset.go;
   if (go === 'carrito') { renderCart(); $('#dlgCarrito').showModal(); return; }
   if (go === 'favoritos') { soloFavs = true; setNav('favoritos'); renderCats(); renderGrid(); $('#productos').scrollIntoView({ behavior: 'smooth' }); return; }
-  if (go === 'contacto') {
-    if (WHATSAPP) window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent('¡Hola! Tengo una pregunta sobre los productos Fraiche.')}`, '_blank', 'noopener');
-    else toast('Pronto podrás escribirnos por WhatsApp desde aquí');
-    return;
-  }
+  if (go === 'tarjeta') { renderTarjeta(); $('#dlgTarjeta').showModal(); return; }
   if (go === 'inicio' || go === 'categorias') { if (soloFavs) { soloFavs = false; renderCats(); renderGrid(); } setNav(go); }
 });
 $('#btnCarrito').addEventListener('click', () => { renderCart(); $('#dlgCarrito').showModal(); });
@@ -849,6 +889,9 @@ function pedidoRealizado(ent) {
   $('#okEntrega').innerHTML = ent.envio
     ? `<b>Envío a domicilio</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp acordamos contigo el lugar, la fecha y la hora exactos de la entrega.</p>`
     : `<b>Pasas a recoger</b><p class="small">Por WhatsApp te avisamos cuándo está listo tu pedido y dónde recogerlo.</p>`;
+  $('#okSello').innerHTML = tocaDescuento() ? '🎉 <b>¡Completaste tu tarjeta!</b> Este pedido lleva 10% de descuento y empiezas una tarjeta nueva.'
+    : `⭐ Ganaste un sello: llevas <b>${compraNum()} de ${META}</b> en tu tarjeta de fidelidad.`;
+  sellar();
   $('#dlgCarrito').close();
   cart = []; saveCart();
   $('#dlgOk').showModal();
@@ -995,7 +1038,10 @@ function renderNegocio() {
 }
 
 /* ---------- arranque ---------- */
-renderHero(); renderCats(); renderGrid(); renderCount(); renderNegocio(); startAutoplay();
+renderHero(); renderCats(); renderGrid(); renderCount(); renderNegocio(); renderSellos(); startAutoplay();
+// bienvenida: solo la primera vez que alguien abre la tienda en ese celular
+$('#dlgBienvenida').addEventListener('close', () => store.set('fr_bienvenida', true));
+if (!store.get('fr_bienvenida', false)) setTimeout(() => { if (!document.querySelector('dialog[open]')) $('#dlgBienvenida').showModal(); }, 700);
 if (WHATSAPP) $('#waFlota').href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent('¡Hola! Tengo una pregunta sobre los productos Fraiche.')}`; else $('#waFlota').hidden = true;
 mueveGota(false); if (document.fonts) document.fonts.ready.then(() => mueveGota(false));
 window.tienda = { mensaje, P, AROMAS, parecidos, get cart() { return cart; } };   // usado por las pruebas

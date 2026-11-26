@@ -564,3 +564,65 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 
 /* aviso de hora ocupada al pedir con envío */
 .hora-nota{margin:6px 0 0;padding:10px 12px;border-radius:12px;background:#fdecea;color:#a3261b;font-size:13.5px;font-weight:600}
+
+/* =========================================================
+   Tarjeta de fidelidad
+   ========================================================= */
+.bottom .count.sello{background:#e2a516}
+.lineas{display:grid;gap:4px;margin:0 0 6px;font-size:14px;color:var(--muted)}
+.lineas div{display:flex;justify-content:space-between}
+.lineas .desc{color:#1d7a3a;font-weight:700}
+.tarjeta-nota{margin:2px 0 6px;padding:10px 12px;border-radius:12px;background:#fff7e0;color:#7a5a10;font-size:13.5px}
+.ok-sello{margin:4px 0 0;padding:10px 14px;border-radius:var(--r-md);background:#fff7e0;color:#7a5a10;font-size:14px;animation:aparece .5s .7s both}
+.tarjeta{position:relative;overflow:hidden;border-radius:22px;padding:18px;color:#fff;
+  background:radial-gradient(120% 90% at 100% 0,rgba(255,255,255,.22),transparent 55%),linear-gradient(135deg,#0b857c,#0a5f59 60%,#073f3b);
+  box-shadow:0 14px 30px rgba(11,133,124,.3);animation:tjEntra .6s var(--spring) both}
+.tarjeta::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);
+  transform:translateX(-120%);animation:tjBrilla 2.4s 0.5s ease-in-out}
+.tj-top{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.tj-top img{border-radius:12px;background:#fff}
+.tj-top b{display:block;font-size:17px}.tj-top small{opacity:.8;font-size:12px}
+.tj-sellos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tj-s{aspect-ratio:1;border-radius:50%;display:grid;place-items:center;border:2px dashed rgba(255,255,255,.45);color:rgba(255,255,255,.75);
+  font-style:normal;font-weight:700;font-size:15px}
+.tj-s i{font-style:normal}
+.tj-s.lleno{border:0;background:#fff;color:#0b857c;animation:sella .45s calc(var(--i) * 70ms + .3s) var(--spring) both}
+.tj-s.lleno svg{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.tj-s.premio{border:2px solid #f4c64e;color:#f4c64e}
+.tj-s.premio b{font-size:14px}
+.tj-canjes{display:block;margin-top:12px;opacity:.85;font-size:12px}
+.tj-estado{margin:4px 0 0;font-size:15px}
+.tj-hist ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.tj-hist li{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);padding:8px 10px;border-radius:10px;background:var(--bg)}
+@keyframes tjEntra{from{transform:translateY(14px) rotate(-2deg) scale(.96);opacity:0}}
+@keyframes sella{from{transform:scale(.3) rotate(-30deg);opacity:0}}
+@keyframes tjBrilla{to{transform:translateX(120%)}}
+
+/* =========================================================
+   Bienvenida (solo la primera visita)
+   ========================================================= */
+.bienvenida{margin:auto;max-width:460px;border-radius:30px}
+.bienvenida[open]{animation:bvEntra .7s var(--spring)}
+.bv-in{align-items:center;text-align:center;padding-top:26px}
+.bv-logo{width:92px;height:92px;border-radius:26px;display:grid;place-items:center;background:#fff;
+  box-shadow:0 12px 30px rgba(11,133,124,.25);animation:flota 3.5s 1s ease-in-out infinite,aparece .6s .1s both}
+.bv-logo img{border-radius:20px}
+.bv-kick{margin:10px 0 0;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);animation:aparece .5s .2s both}
+.bienvenida h2{margin:0;font-size:30px;letter-spacing:-.03em;animation:aparece .5s .28s both}
+.bv-sub{margin:0;color:var(--muted);font-size:14.5px;animation:aparece .5s .36s both}
+.bv-pasos{list-style:none;counter-reset:paso;margin:6px 0 4px;padding:0;display:grid;gap:8px;text-align:left;width:100%}
+.bv-pasos li{counter-increment:paso;position:relative;padding:10px 12px 10px 50px;border-radius:16px;background:var(--bg);border:1px solid var(--line);
+  display:flex;flex-direction:column;animation:aparece .5s both}
+.bv-pasos li:nth-child(1){animation-delay:.44s}.bv-pasos li:nth-child(2){animation-delay:.52s}
+.bv-pasos li:nth-child(3){animation-delay:.6s}.bv-pasos li:nth-child(4){animation-delay:.68s}
+.bv-pasos li::before{content:counter(paso);position:absolute;left:12px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:800;font-size:14px}
+.bv-pasos li:last-child::before{content:"★";background:#e2a516}
+.bv-pasos b{font-size:14.5px}.bv-pasos span{font-size:13px;color:var(--muted)}
+#bvEmpezar{width:100%;animation:aparece .5s .78s both}
+#bvQuiz{animation:aparece .5s .86s both}
+@keyframes bvEntra{from{transform:translateY(30px) scale(.94);opacity:0}}
+@keyframes flota{50%{transform:translateY(-6px) rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){
+  .tarjeta,.tarjeta::after,.tj-s.lleno,.bienvenida[open],.bv-logo,.bv-kick,.bienvenida h2,.bv-sub,.bv-pasos li,#bvEmpezar,#bvQuiz,.ok-sello{animation:none}
+}

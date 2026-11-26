@@ -108,7 +108,7 @@
   <a href="#categorias" data-go="categorias"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Categorías</a>
   <button data-go="carrito"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11.2a2 2 0 002 1.6h7.7a2 2 0 002-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/></svg>Carrito<span class="count" id="cuenta2" hidden>0</span></button>
   <button data-go="favoritos"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
-  <button data-go="contacto"><svg viewBox="0 0 24 24"><path d="M5 19l1.2-3.6A7.5 7.5 0 1112 19.5a7.6 7.6 0 01-3.6-.9z"/></svg>Contacto</button>
+  <button data-go="tarjeta"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M12 9l1.1 2.2 2.4.3-1.8 1.7.5 2.4L12 14.4l-2.2 1.2.5-2.4-1.8-1.7 2.4-.3z"/></svg>Tarjeta<span class="count sello" id="sellosNav" hidden>0</span></button>
 </nav>
 
 <dialog id="dlgProducto" class="sheet" aria-labelledby="pNombre">
@@ -158,7 +158,9 @@
       <button type="button" class="mas" id="repetir" data-repetir="1" hidden>Repetir mi último pedido</button>
     </div>
     <div id="checkout">
+      <div class="lineas" id="lineas" hidden></div>
       <div class="total"><span>Total</span><b id="total"></b></div>
+      <p class="tarjeta-nota" id="tarjetaNota"></p>
       <label class="fld" for="cNombre">Tu nombre</label>
       <input id="cNombre" type="text" autocomplete="name" placeholder="¿A nombre de quién?">
       <span class="fld">Entrega</span>
@@ -215,6 +217,7 @@
     <p class="folio" id="okFolio"></p>
     <div class="ok-resumen" id="okResumen"></div>
     <div class="ok-entrega" id="okEntrega"></div>
+    <p class="ok-sello" id="okSello"></p>
     <p class="small">Tu pedido se abrió en WhatsApp. Si no lo enviaste, tócalo de nuevo:</p>
     <button type="button" class="primary wa" id="okWa"><svg viewBox="0 0 24 24"><path d="M5 19l1.2-3.6A7.5 7.5 0 1112 19.5a7.6 7.6 0 01-3.6-.9z"/></svg>Abrir WhatsApp otra vez</button>
     <button type="button" class="mas" id="okCerrar">Seguir comprando</button>
@@ -232,6 +235,34 @@
 <a class="wa-flota" id="waFlota" href="https://wa.me/525574348740?text=%C2%A1Hola!%20Tengo%20una%20pregunta%20sobre%20los%20productos%20Fraiche." target="_blank" rel="noopener" aria-label="Escríbeme por WhatsApp">
   <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 00-11.2 19.6L3 29l6.6-1.7A13 13 0 1016 3zm0 23.6a10.6 10.6 0 01-5.4-1.5l-.4-.2-3.9 1 1-3.8-.2-.4A10.6 10.6 0 1116 26.6zm5.8-7.9c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0a8.7 8.7 0 01-4.3-3.8c-.3-.6.3-.5.9-1.7a.6.6 0 000-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 00-.9.4 3.6 3.6 0 00-1.1 2.7 6.3 6.3 0 001.3 3.3 14.4 14.4 0 005.5 4.9c2 .9 2.8.9 3.8.8a3.3 3.3 0 002.2-1.5 2.7 2.7 0 00.2-1.5c-.1-.2-.3-.3-.6-.4z"/></svg>
 </a>
+
+<dialog id="dlgTarjeta" class="sheet" aria-labelledby="tjTitulo">
+  <form method="dialog" class="sheet-in">
+    <button class="close" value="cancel" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="tjTitulo">Tu tarjeta de fidelidad</h2>
+    <div class="tarjeta" id="tarjetaCard"></div>
+    <p class="tj-estado" id="tjEstado"></p>
+    <div class="tj-hist" id="tjHist"></div>
+    <p class="small izq">Cada pedido que mandas por WhatsApp suma un sello. En tu 8ª compra tienes <b>10% de descuento</b> y empiezas una tarjeta nueva. Tu tarjeta se guarda en este celular; los sellos se confirman con tus pedidos.</p>
+  </form>
+</dialog>
+
+<dialog id="dlgBienvenida" class="sheet bienvenida" aria-labelledby="bvTitulo">
+  <form method="dialog" class="sheet-in bv-in">
+    <div class="bv-logo" aria-hidden="true"><img src="img/logo/logo-192.png" alt="" width="84" height="84"></div>
+    <p class="bv-kick">Distribuidor Independiente Fraiche</p>
+    <h2 id="bvTitulo">¡Bienvenido!</h2>
+    <p class="bv-sub">Aquí encuentras perfumes, rellenos, bodys, cremas y más, con precio. Así funciona:</p>
+    <ol class="bv-pasos">
+      <li><b>Elige tu producto</b><span>Perfumes de 10 a 120 ml, rellenos para tu frasco y lo que tengo en existencia.</span></li>
+      <li><b>Escoge esencia y aroma</b><span>De línea, neeche o árabe. ¿No sabes cuál? Haz el test de aroma.</span></li>
+      <li><b>Manda tu pedido por WhatsApp</b><span>Te llega listo con tu folio; ahí acordamos pago y entrega.</span></li>
+      <li><b>Junta sellos</b><span>Cada compra suma un sello en tu tarjeta. En la 8ª tienes 10% de descuento.</span></li>
+    </ol>
+    <button class="primary" value="ok" id="bvEmpezar">Empezar a comprar</button>
+    <button type="button" class="link" id="bvQuiz" data-quiz="1">¿Qué aroma es para mí? Hacer el test</button>
+  </form>
+</dialog>
 
 <div id="toast" role="status" aria-live="polite"></div>
 

@@ -22,8 +22,13 @@ let fails = 0;
 async function prueba(nombre, fn) {
   try { await fn(); console.log('  ✓', nombre); } catch (e) { fails++; console.log('  ✗', nombre, '\n     ', e.message.split('\n')[0]); }
 }
-async function abrir({ width = 390, height = 844, scheme = 'light', ajustes = null, ruta = 'index.html' } = {}) {
-  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, colorScheme: scheme, reducedMotion: 'reduce' });
+async function abrir({ width = 390, height = 844, scheme = 'light', ajustes = null, ruta = 'index.html', nuevo = false, tarjeta = null, movil = false, calma = true } = {}) {
+  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, colorScheme: scheme, reducedMotion: calma ? 'reduce' : 'no-preference', isMobile: movil, hasTouch: movil });
+  // por defecto ya vio la bienvenida (para que no tape la página); nuevo: true la deja salir
+  await ctx.addInitScript(({ nuevo, tarjeta }) => {
+    if (!nuevo && localStorage.getItem('fr_bienvenida') == null) localStorage.setItem('fr_bienvenida', 'true');
+    if (tarjeta && localStorage.getItem('fr_tarjeta') == null) localStorage.setItem('fr_tarjeta', JSON.stringify(tarjeta));
+  }, { nuevo, tarjeta });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());          // sin internet en las pruebas
   const page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -452,6 +457,86 @@ await prueba('Kit Keep Hands Clean a $49, "¡Últimas 2!" y no deja pedir más d
   assert.equal(badge, '¡Últimas 2!');
   assert.equal(cant, '2'); assert.equal(boton, 'Agregar · $98');
   assert.deepEqual(dif, [82, false]);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('en celular real (con animaciones) la página no queda más ancha que la pantalla', async () => {
+  for (const nuevo of [false, true]) {
+    const { ctx, page, errors } = await abrir({ movil: true, calma: false, nuevo });
+    await page.waitForTimeout(2500);
+    const w = await page.evaluate(() => [innerWidth, document.documentElement.scrollWidth]);
+    await ctx.close();
+    assert.deepEqual(w, [390, 390], `ancho ${w} (bienvenida: ${nuevo})`);
+    assert.deepEqual(errors, []);
+  }
+});
+
+await prueba('bienvenida: sale solo la primera vez y no vuelve a salir al recargar', async () => {
+  const { ctx, page, errors } = await abrir({ nuevo: true });
+  await page.waitForSelector('#dlgBienvenida[open]');
+  const titulo = await page.textContent('#bvTitulo'), pasos = await page.locator('.bv-pasos li').count();
+  await page.click('#bvEmpezar');
+  const cerrada = await page.isHidden('#dlgBienvenida');
+  await page.reload(); await page.waitForTimeout(1200);
+  const otraVez = await page.isVisible('#dlgBienvenida');
+  await ctx.close();
+  assert.equal(titulo, '¡Bienvenido!'); assert.equal(pasos, 4);
+  assert.ok(cerrada && !otraVez, `cerrada ${cerrada}, otra vez ${otraVez}`);
+  assert.deepEqual(errors, []);
+});
+
+// manda un pedido de un Baby Cologne ($54) y cierra la confirmación; devuelve el mensaje de WhatsApp
+async function comprar(page) {
+  await page.evaluate(() => { window.__abiertos = []; window.open = u => { window.__abiertos.push(u); return null; }; });
+  await page.click('.cat[data-cat="existencia"]');
+  await page.click('.card .add[data-open="ex-baby"]');
+  await page.click('#pAgregar');
+  await page.click('#btnCarrito');
+  const nota = await page.textContent('#tarjetaNota'), total = await page.textContent('#total');
+  await page.click('#enviar');
+  await page.waitForSelector('#dlgOk[open]');
+  const sello = await page.textContent('#okSello');
+  await page.click('#okCerrar');
+  const url = await page.evaluate(() => window.__abiertos.pop());
+  return { nota, total, sello, msg: decodeURIComponent(url.split('text=')[1]) };
+}
+
+await prueba('tarjeta de fidelidad: cada pedido suma un sello y se ve en la barra de abajo', async () => {
+  const { ctx, page, errors } = await abrir();
+  await page.click('.bottom [data-go="tarjeta"]');
+  const vacia = await page.textContent('#tjEstado'), sellos0 = await page.locator('.tj-s.lleno').count();
+  await page.click('#dlgTarjeta .close');
+  const c = await comprar(page);
+  const badge = await page.textContent('#sellosNav');
+  await page.click('.bottom [data-go="tarjeta"]');
+  const sellos1 = await page.locator('.tj-s.lleno').count(), hist = await page.textContent('#tjHist');
+  await ctx.close();
+  assert.ok(vacia.includes('Aún no tienes sellos') && sellos0 === 0, vacia);
+  assert.ok(c.nota.includes('1 de 8') && c.total === '$54', c.nota + ' ' + c.total);
+  assert.ok(c.msg.includes('Tarjeta de fidelidad: compra 1 de 8'), c.msg);
+  assert.ok(c.sello.includes('1 de 8'), c.sello);
+  assert.equal(badge, '1'); assert.equal(sellos1, 1);
+  assert.ok(/Folio F-\d{6}-\d{4}/.test(hist), hist);
+  assert.deepEqual(errors, []);
+});
+
+await prueba('tarjeta de fidelidad: en la 8ª compra hay 10% de descuento, folios anteriores y tarjeta nueva', async () => {
+  const sellos = Array.from({ length: 7 }, (_, i) => ({ folio: `F-0${i + 1}0126-1200`, fecha: '2026-01-0' + (i + 1), total: 100 }));
+  const { ctx, page, errors } = await abrir({ tarjeta: { sellos, canjes: 0 } });
+  await page.click('.bottom [data-go="tarjeta"]');
+  const estado = await page.textContent('#tjEstado');
+  await page.click('#dlgTarjeta .close');
+  const c = await comprar(page);
+  const t = await page.evaluate(() => JSON.parse(localStorage.getItem('fr_tarjeta')));
+  const badgeOculto = await page.isHidden('#sellosNav');
+  await ctx.close();
+  assert.ok(estado.includes('próxima compra tiene 10%'), estado);
+  assert.ok(c.nota.includes('8ª compra') && c.total === '$49', c.nota + ' ' + c.total);   // $54 − $5
+  assert.ok(c.msg.includes('Descuento tarjeta de fidelidad (8ª compra, 10%): −$5') && c.msg.includes('*Total: $49*')
+    && c.msg.includes('compra 8 de 8') && c.msg.includes('F-010126-1200'), c.msg);
+  assert.ok(c.sello.includes('Completaste tu tarjeta'), c.sello);
+  assert.deepEqual([t.sellos.length, t.canjes], [0, 1]);
+  assert.ok(badgeOculto);
   assert.deepEqual(errors, []);
 });
 
