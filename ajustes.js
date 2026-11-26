@@ -16,7 +16,7 @@ window.AJUSTES = {
   pago: { banco: 'Spin by OXXO', clabe: '728969000167231397', titular: 'Ricardo' },
   // Llave pública para revisar los sellos de la tarjeta de fidelidad. Se crea en panel.html → Sellos.
   // (La llave privada nunca se sube: se queda en tu panel.)
-  llaveSellos: null,
+  llaveSellos: { x: 'gIsSGx6EgkSO5QA7LuNT3MjhVETt53xdz4PmCTowCos', y: 'Ii1RIFGF2_VAcbfew51ctE1aDNc_GIBapEPHnVZk-bI' },
   // Productos agotados: el id del producto, o 'id:Nombre de la opción' para una sola opción.
   // ej. ['ex-veladoras:Tierna Lavanda', 'kit-papa']
   agotados: [],
