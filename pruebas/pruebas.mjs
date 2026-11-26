@@ -486,20 +486,22 @@ await prueba('bienvenida: sale solo la primera vez y no vuelve a salir al recarg
 });
 
 // manda un pedido de un Baby Cologne ($54) y cierra la confirmación; devuelve el mensaje de WhatsApp
-async function comprar(page) {
+async function comprar(page, { transferencia = false } = {}) {
   await page.evaluate(() => { window.__abiertos = []; window.open = u => { window.__abiertos.push(u); return null; }; });
   await page.click('.cat[data-cat="existencia"]');
   await page.click('.card .add[data-open="ex-baby"]');
   await page.click('#pAgregar');
   await page.click('#btnCarrito');
   const nota = await page.textContent('#tarjetaNota'), total = await page.textContent('#total');
+  if (transferencia) await page.check('input[name=pago][value="Transferencia"]', { force: true });
+  const pagoCarrito = await page.textContent('#pagoBox');
   await page.click('#enviar');
   await page.waitForSelector('#dlgOk[open]');
   const sello = await page.textContent('#okSello'), pago = await page.isVisible('#okPago') ? await page.textContent('#okPago') : '';
   const folio = (await page.textContent('#okFolio')).replace('Folio ', '');
   await page.click('#okCerrar');
   const url = await page.evaluate(() => window.__abiertos.pop());
-  return { nota, total, sello, pago, folio, msg: decodeURIComponent(url.split('text=')[1]) };
+  return { nota, total, sello, pago, pagoCarrito, folio, msg: decodeURIComponent(url.split('text=')[1]) };
 }
 
 await prueba('tarjeta: mandar el pedido NO sella; queda "esperando pago" y salen los datos para transferir', async () => {
@@ -507,7 +509,8 @@ await prueba('tarjeta: mandar el pedido NO sella; queda "esperando pago" y salen
   await page.click('.bottom [data-go="tarjeta"]');
   const vacia = await page.textContent('#tjEstado');
   await page.click('#dlgTarjeta .close');
-  const c = await comprar(page);
+  const ef = await comprar(page);   // efectivo: sin datos de transferencia
+  const c = await comprar(page, { transferencia: true });
   const badgeOculto = await page.isHidden('#sellosNav');
   await page.click('.bottom [data-go="tarjeta"]');
   const sellos = await page.locator('.tj-s.lleno').count(), hist = await page.textContent('#tjHist');
@@ -516,7 +519,10 @@ await prueba('tarjeta: mandar el pedido NO sella; queda "esperando pago" y salen
   assert.ok(c.nota.includes('Cuando confirme tu pago') && c.nota.includes('1 de 8') && c.total === '$54', c.nota + ' ' + c.total);
   assert.ok(c.msg.includes('Tarjeta de fidelidad: compra 1 de 8'), c.msg);
   assert.ok(c.sello.includes('Cuando confirme tu pago'), c.sello);
+  assert.ok(ef.pagoCarrito.includes('efectivo') && ef.pago === '' && ef.msg.includes('Pago: Efectivo'), ef.pagoCarrito + ef.msg);
+  assert.ok(c.pagoCarrito.includes('7289 6900 0167 2313 97') && c.pagoCarrito.includes('Ricardo'), c.pagoCarrito);
   assert.ok(c.pago.includes('Spin by OXXO') && c.pago.includes('7289 6900 0167 2313 97') && c.pago.includes(c.folio), c.pago);
+  assert.ok(c.msg.includes('Pago: Transferencia'), c.msg);
   assert.ok(badgeOculto && sellos === 0, `sin sellos: ${sellos}`);
   assert.ok(hist.includes('Esperando confirmación de pago') && hist.includes(c.folio), hist);
   assert.deepEqual(errors, []);

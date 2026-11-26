@@ -779,6 +779,7 @@ function mensaje() {
     `Tarjeta de fidelidad: compra ${compraNum()} de ${META}${d ? ' 🎉' : ''}`,
     d && previos.length ? `Mis compras anteriores: ${previos.join(', ')}` : null, '',
     nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Punto de encuentro' : 'Paso a recoger'}`,
+    `Pago: ${formaPago() === 'Transferencia' ? 'Transferencia (te mando mi comprobante)' : 'Efectivo'}`,
     ent.envio && ent.lugar ? `Punto de encuentro: ${ent.lugar}` : null,
     ent.envio && cuando ? `Fecha y hora que prefiero: ${cuando}` : null,
     notas ? `Notas: ${notas}` : null].filter(x => x !== null).join('\n');
@@ -938,15 +939,24 @@ $('#enviar').addEventListener('click', () => {
   abrirWhats(ultimoMensaje);
   pedidoRealizado(ent);
 });
-// datos de pago (ajustes.js → pago): solo salen en la confirmación, después de hacer el pedido
+// forma de pago (ajustes.js → pago): se elige en el carrito antes de mandar el pedido
 const PAGO = AJ.pago || {};
 const clabePago = () => String(PAGO.clabe || '').replace(/\D/g, '');
-function renderPago() {
-  const c = clabePago();
-  $('#okPago').hidden = !c;
-  $('#okPago').innerHTML = c ? `<b>¿Cómo pagar?</b><p>En efectivo al recibir tu pedido, o por transferencia:</p>
-    <div class="clabe"><div>${PAGO.banco ? `<small>${esc(PAGO.banco)}</small>` : ''}<span>CLABE <b>${c.replace(/(\d{4})(?=\d)/g, '$1 ')}</b></span>
-      ${PAGO.titular ? `<small>A nombre de ${esc(PAGO.titular)}</small>` : ''}</div><button type="button" class="copiar" data-copiar="${c}">Copiar CLABE</button></div>
+const formaPago = () => (document.querySelector('input[name=pago]:checked') || {}).value || 'Efectivo';
+const datosClabe = c => `<div class="clabe"><div>${PAGO.banco ? `<small>${esc(PAGO.banco)}</small>` : ''}<span>CLABE <b>${c.replace(/(\d{4})(?=\d)/g, '$1 ')}</b></span>
+  ${PAGO.titular ? `<small>A nombre de ${esc(PAGO.titular)}</small>` : ''}</div><button type="button" class="copiar" data-copiar="${c}">Copiar CLABE</button></div>`;
+function renderFormaPago() {   // en el carrito
+  const c = clabePago(), transf = formaPago() === 'Transferencia';
+  $('#pagoBox').innerHTML = transf && c ? `${datosClabe(c)}<p class="small izq">Después de mandar tu pedido, transfiere y mándame tu comprobante por WhatsApp con tu folio.</p>`
+    : transf ? '<p class="small izq">Te mando los datos para transferir por WhatsApp.</p>'
+      : '<p class="small izq">Pagas en efectivo al recibir tu pedido.</p>';
+}
+document.querySelectorAll('input[name=pago]').forEach(r => r.addEventListener('change', renderFormaPago));
+renderFormaPago();
+function renderPago() {   // en la confirmación: recordatorio corto solo si eligió transferencia
+  const c = clabePago(), transf = formaPago() === 'Transferencia';
+  $('#okPago').hidden = !transf;
+  $('#okPago').innerHTML = transf ? `<b>Pago por transferencia</b>${c ? datosClabe(c) : ''}
     <p class="small">Mándame tu comprobante por WhatsApp con tu folio <b>${esc(folio)}</b> y te mando tu sello.</p>` : '';
 }
 // ventana de confirmación: folio, resumen y cómo se acuerda la entrega
@@ -1095,7 +1105,7 @@ function repetirPedido() {
 
 /* ---------- tu negocio y reseñas (ajustes.js) ---------- */
 function renderNegocio() {
-  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Pago', clabePago() ? 'En efectivo al recibir o por transferencia. Los datos para transferir te salen al hacer tu pedido.' : ''], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
+  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Pago', clabePago() ? 'En efectivo al recibir o por transferencia. Los datos para transferir te salen en tu carrito al elegir transferencia.' : ''], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
   const mapa = n.mapa && /^https:\/\//.test(n.mapa) ? `<a class="mas" href="${esc(n.mapa)}" target="_blank" rel="noopener">Ver en el mapa</a>` : '';
   $('#negocio').hidden = !filas.length && !mapa;
   $('#negocio').innerHTML = filas.map(([k, v]) => `<div><b>${k}</b><span>${esc(v)}</span></div>`).join('') + mapa;

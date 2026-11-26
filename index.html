@@ -178,6 +178,12 @@
         <p class="hora-nota" id="horaNota" role="alert" hidden></p>
         <p class="small izq">Por WhatsApp acordamos contigo el lugar, la fecha y la hora exactos.</p>
       </div>
+      <span class="fld">¿Cómo vas a pagar?</span>
+      <div class="seg" role="radiogroup" aria-label="Forma de pago">
+        <label><input type="radio" name="pago" value="Efectivo" checked><span>Efectivo</span></label>
+        <label><input type="radio" name="pago" value="Transferencia"><span>Transferencia</span></label>
+      </div>
+      <div id="pagoBox" class="pago-box"></div>
       <label class="fld" for="cNotas">Notas (opcional)</label>
       <input id="cNotas" type="text" placeholder="Ej. es para regalo">
       <button type="button" class="primary wa" id="enviar"><svg viewBox="0 0 24 24"><path d="M5 19l1.2-3.6A7.5 7.5 0 1112 19.5a7.6 7.6 0 01-3.6-.9z"/></svg>Enviar pedido por WhatsApp</button>

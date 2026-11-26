@@ -382,7 +382,7 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 .sheet input[type=date],.sheet input[type=time]{width:100%;height:48px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:16px;color:var(--ink)}
 
 /* ---------- pedido realizado ---------- */
-.ok{margin:auto;max-width:440px;border-radius:30px;overflow:hidden}
+.ok{margin:auto;max-width:440px;border-radius:30px;overflow:auto;overscroll-behavior:contain}
 .ok-in{align-items:center;text-align:center;padding-top:28px;position:relative}
 .ok h2{margin:6px 0 0;font-size:26px;letter-spacing:-.02em;animation:aparece .5s .35s both}
 .check{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;
@@ -642,3 +642,7 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 .tj-hist ul.pend li{background:#fff7e0;color:#7a5a10}
 .tj-hist > b{display:block;margin-top:10px;font-size:14px}
 @media (prefers-reduced-motion:reduce){.ok-pago,.tj-aviso{animation:none}}
+
+/* forma de pago en el carrito */
+.pago-box .clabe{margin:8px 0 2px}
+.pago-box .small{margin-top:4px}
