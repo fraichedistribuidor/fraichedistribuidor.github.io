@@ -495,48 +495,97 @@ async function comprar(page) {
   const nota = await page.textContent('#tarjetaNota'), total = await page.textContent('#total');
   await page.click('#enviar');
   await page.waitForSelector('#dlgOk[open]');
-  const sello = await page.textContent('#okSello');
+  const sello = await page.textContent('#okSello'), pago = await page.isVisible('#okPago') ? await page.textContent('#okPago') : '';
+  const folio = (await page.textContent('#okFolio')).replace('Folio ', '');
   await page.click('#okCerrar');
   const url = await page.evaluate(() => window.__abiertos.pop());
-  return { nota, total, sello, msg: decodeURIComponent(url.split('text=')[1]) };
+  return { nota, total, sello, pago, folio, msg: decodeURIComponent(url.split('text=')[1]) };
 }
 
-await prueba('tarjeta de fidelidad: cada pedido suma un sello y se ve en la barra de abajo', async () => {
+await prueba('tarjeta: mandar el pedido NO sella; queda "esperando pago" y salen los datos para transferir', async () => {
   const { ctx, page, errors } = await abrir();
   await page.click('.bottom [data-go="tarjeta"]');
-  const vacia = await page.textContent('#tjEstado'), sellos0 = await page.locator('.tj-s.lleno').count();
+  const vacia = await page.textContent('#tjEstado');
   await page.click('#dlgTarjeta .close');
   const c = await comprar(page);
-  const badge = await page.textContent('#sellosNav');
+  const badgeOculto = await page.isHidden('#sellosNav');
   await page.click('.bottom [data-go="tarjeta"]');
-  const sellos1 = await page.locator('.tj-s.lleno').count(), hist = await page.textContent('#tjHist');
+  const sellos = await page.locator('.tj-s.lleno').count(), hist = await page.textContent('#tjHist');
   await ctx.close();
-  assert.ok(vacia.includes('Aún no tienes sellos') && sellos0 === 0, vacia);
-  assert.ok(c.nota.includes('1 de 8') && c.total === '$54', c.nota + ' ' + c.total);
+  assert.ok(vacia.includes('Aún no tienes sellos'), vacia);
+  assert.ok(c.nota.includes('Cuando confirme tu pago') && c.nota.includes('1 de 8') && c.total === '$54', c.nota + ' ' + c.total);
   assert.ok(c.msg.includes('Tarjeta de fidelidad: compra 1 de 8'), c.msg);
-  assert.ok(c.sello.includes('1 de 8'), c.sello);
-  assert.equal(badge, '1'); assert.equal(sellos1, 1);
-  assert.ok(/Folio F-\d{6}-\d{4}-[2-9A-HJKMNP-Z]{4}/.test(hist), hist);
+  assert.ok(c.sello.includes('Cuando confirme tu pago'), c.sello);
+  assert.ok(c.pago.includes('Spin by OXXO') && c.pago.includes('7289 6900 0167 2313 97') && c.pago.includes(c.folio), c.pago);
+  assert.ok(badgeOculto && sellos === 0, `sin sellos: ${sellos}`);
+  assert.ok(hist.includes('Esperando confirmación de pago') && hist.includes(c.folio), hist);
   assert.deepEqual(errors, []);
 });
 
-await prueba('tarjeta de fidelidad: en la 8ª compra hay 10% de descuento, folios anteriores y tarjeta nueva', async () => {
-  const sellos = Array.from({ length: 7 }, (_, i) => ({ folio: `F-0${i + 1}0126-1200`, fecha: '2026-01-0' + (i + 1), total: 100 }));
+await prueba('panel → link de sello firmado: sella una sola vez; links falsos o alterados no sirven', async () => {
+  // 1) el vendedor crea su llave y sella el folio de un pedido en su panel
+  const p = await abrir({ ruta: 'panel.html' });
+  await p.page.evaluate(() => { window.open = () => null; });
+  await p.page.click('#crearLlave');
+  await p.page.waitForSelector('#sFolio');
+  const pub = await p.page.evaluate(() => window.panel.llave.publica);
+  const ajustesJs = await p.page.evaluate(() => window.panel.archivo());
+  // 2) el cliente hace su pedido con la tienda que ya tiene la llave pública
+  const ajustes = { pago: { banco: 'Spin by OXXO', clabe: '728969000167231397', titular: 'Ricardo' }, llaveSellos: pub };
+  const cli = await abrir({ ajustes });
+  const c = await comprar(cli.page);
+  await p.page.fill('#sFolio', c.folio.toLowerCase());
+  await p.page.fill('#sCliente', 'Ana García');
+  await p.page.click('#sSellar');
+  await p.page.waitForSelector('#sLink');
+  const link = await p.page.inputValue('#sLink');
+  const lista = await p.page.textContent('#sLista');
+  const malFolio = async f => { await p.page.fill('#sFolio', f); await p.page.fill('#sCliente', 'X'); await p.page.click('#sSellar'); return p.page.textContent('#sResultado'); };
+  const err = await malFolio('F-12');
+  await p.ctx.close();
+  // 3) el cliente abre su link: se sella; abrirlo otra vez no suma
+  const hash = link.slice(link.indexOf('#'));
+  await cli.page.evaluate(h => { location.hash = h; }, hash);
+  await cli.page.waitForSelector('#dlgTarjeta[open]');
+  const aviso1 = await cli.page.textContent('#tjAviso'), sellos1 = await cli.page.locator('.tj-s.lleno').count();
+  const pend = await cli.page.textContent('#tjHist');
+  await cli.page.click('#dlgTarjeta .close');
+  await cli.page.evaluate(h => { location.hash = ''; location.hash = h; }, hash);
+  await cli.page.waitForSelector('#dlgTarjeta[open]');
+  const aviso2 = await cli.page.textContent('#tjAviso');
+  await cli.page.click('#dlgTarjeta .close');
+  // un link con otro folio pero la misma firma (trampa) no sirve
+  const trampa = hash.replace(c.folio, 'F-010101-0101-AAAA');
+  await cli.page.evaluate(h => { location.hash = ''; location.hash = h; }, trampa);
+  await cli.page.waitForSelector('#dlgTarjeta[open]');
+  const aviso3 = await cli.page.textContent('#tjAviso'), sellos3 = await cli.page.locator('.tj-s.lleno').count();
+  const badge = await cli.page.textContent('#sellosNav');
+  await cli.ctx.close();
+  assert.ok(ajustesJs.includes(pub.x), 'ajustes.js descargado lleva la llave pública');
+  assert.ok(link.startsWith('https://fraichedistribuidor.github.io/#sello=' + c.folio + '.'), link);
+  assert.ok(lista.includes('Ana García') && lista.includes('1 de 8'), lista);
+  assert.ok(err.includes('Revisa el folio'), err);
+  assert.ok(aviso1.includes('Sello agregado') && sellos1 === 1 && !pend.includes('Esperando'), `${aviso1} · ${sellos1} · ${pend}`);
+  assert.ok(aviso2.includes('ya estaba sellado'), aviso2);
+  assert.ok(aviso3.includes('no es válido') && sellos3 === 1 && badge === '1', `${aviso3} · ${sellos3}`);
+  assert.deepEqual([...p.errors, ...cli.errors], []);
+});
+
+await prueba('tarjeta: en la 8ª compra hay 10% de descuento con folios anteriores; un 2º pedido pendiente ya no repite el descuento', async () => {
+  const sellos = Array.from({ length: 7 }, (_, i) => ({ folio: `F-0${i + 1}0126-1200-ABCD`, fecha: '2026-01-0' + (i + 1), total: 100 }));
   const { ctx, page, errors } = await abrir({ tarjeta: { sellos, canjes: 0 } });
   await page.click('.bottom [data-go="tarjeta"]');
   const estado = await page.textContent('#tjEstado');
   await page.click('#dlgTarjeta .close');
   const c = await comprar(page);
-  const t = await page.evaluate(() => JSON.parse(localStorage.getItem('fr_tarjeta')));
-  const badgeOculto = await page.isHidden('#sellosNav');
+  const c2 = await comprar(page);
   await ctx.close();
   assert.ok(estado.includes('próxima compra tiene 10%'), estado);
   assert.ok(c.nota.includes('8ª compra') && c.total === '$49', c.nota + ' ' + c.total);   // $54 − $5
   assert.ok(c.msg.includes('Descuento tarjeta de fidelidad (8ª compra, 10%): −$5') && c.msg.includes('*Total: $49*')
-    && c.msg.includes('compra 8 de 8') && c.msg.includes('F-010126-1200'), c.msg);
-  assert.ok(c.sello.includes('Completaste tu tarjeta'), c.sello);
-  assert.deepEqual([t.sellos.length, t.canjes], [0, 1]);
-  assert.ok(badgeOculto);
+    && c.msg.includes('compra 8 de 8') && c.msg.includes('F-010126-1200-ABCD'), c.msg);
+  assert.ok(c.sello.includes('10% de descuento'), c.sello);
+  assert.equal(c2.total, '$54');
   assert.deepEqual(errors, []);
 });
 

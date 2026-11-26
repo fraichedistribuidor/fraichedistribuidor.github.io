@@ -12,6 +12,11 @@ window.AJUSTES = {
     // la página le avisa y le pide otra hora.
     ocupado: [],      // ej. [{ dias: [1, 2, 3, 4, 5], desde: '17:00', hasta: '21:00', motivo: 'De 5 a 9 pm estoy en clases' }]
   },
+  // Pago por transferencia: solo sale en la confirmación, después de que el cliente hace su pedido.
+  pago: { banco: 'Spin by OXXO', clabe: '728969000167231397', titular: 'Ricardo' },
+  // Llave pública para revisar los sellos de la tarjeta de fidelidad. Se crea en panel.html → Sellos.
+  // (La llave privada nunca se sube: se queda en tu panel.)
+  llaveSellos: null,
   // Productos agotados: el id del producto, o 'id:Nombre de la opción' para una sola opción.
   // ej. ['ex-veladoras:Tierna Lavanda', 'kit-papa']
   agotados: [],

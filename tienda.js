@@ -630,28 +630,74 @@ $('#pVar').addEventListener('click', e => {
 $('#pVar').addEventListener('input', e => { if (e.target.id === 'pVarBusca') filtraFrascos(); });
 const varName = it => it.v >= 0 ? byId[it.id].var[it.v].n : '';
 const muchasEsencias = it => { const pr = preciosDe(byId[it.id], it.v); return !!pr && Object.keys(pr).length > 1; };
-/* ---------- tarjeta de fidelidad: un sello por pedido; en la 8ª compra, 10% de descuento ---------- */
-// Se guarda en el celular del cliente. Cada pedido de WhatsApp dice en qué compra va; en la 8ª incluye los folios
-// anteriores para que el vendedor verifique que fueron compras reales antes de dar el descuento.
+/* ---------- tarjeta de fidelidad: el vendedor sella cuando confirma el pago; en la 8ª compra, 10% ---------- */
+// Al mandar el pedido NO se sella: queda "esperando pago". Cuando el vendedor confirma el pago (efectivo o
+// transferencia), desde su panel crea un link de sello firmado para ese folio y se lo manda por WhatsApp. Al abrirlo,
+// la página revisa la firma con la llave pública (ajustes.js → llaveSellos) y sella la tarjeta. Nadie más puede crear
+// sellos válidos, y cada folio se sella una sola vez. La tarjeta se guarda en el celular del cliente.
 const META = 8, DESC = 0.10;
-const tarjeta = () => Object.assign({ sellos: [], canjes: 0 }, store.get('fr_tarjeta', {}) || {});
+const LLAVE = AJ.llaveSellos && AJ.llaveSellos.x ? AJ.llaveSellos : null;
+const tarjeta = () => {
+  const t = Object.assign({ sellos: [], pendientes: [], usados: [], canjes: 0 }, store.get('fr_tarjeta', {}) || {});
+  t.pendientes = t.pendientes || []; t.usados = t.usados || []; return t;
+};
+const guardaTarjeta = t => { store.set('fr_tarjeta', t); renderSellos(); };
 const compraNum = () => Math.min(tarjeta().sellos.length + 1, META);
-const tocaDescuento = () => compraNum() === META;
+// 10% cuando ya tiene 7 sellos y no hay otro pedido pendiente que ya lo esté usando
+const tocaDescuento = () => { const t = tarjeta(); return t.sellos.length === META - 1 && !t.pendientes.some(p => p.desc); };
 const subtotal = () => cart.reduce((a, it) => a + (lineTotal(it) || 0), 0);
 const descuento = () => tocaDescuento() ? Math.round(subtotal() * DESC) : 0;
 const total = () => subtotal() - descuento();
-function sellar() {
+// pedido mandado: queda esperando que el vendedor confirme el pago
+function registraPedido() {
   const t = tarjeta();
-  t.sellos.push({ folio, fecha: hoyISO(), total: total() });
-  if (t.sellos.length >= META) { t.sellos = []; t.canjes++; }
-  store.set('fr_tarjeta', t); renderSellos();
+  t.pendientes = [...t.pendientes.filter(p => p.folio !== folio), { folio, fecha: hoyISO(), total: total(), desc: tocaDescuento() }].slice(-20);
+  guardaTarjeta(t);
+}
+const desdeB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+async function firmaValida(f, firma) {
+  if (!LLAVE || !window.crypto || !crypto.subtle) return false;
+  try {
+    const k = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: LLAVE.x, y: LLAVE.y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+    return await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, k, desdeB64u(firma), new TextEncoder().encode('fraiche-sello|' + f));
+  } catch (e) { return false; }
+}
+// abre la tienda con #sello=FOLIO.FIRMA (el link que manda el vendedor)
+async function recibeSello() {
+  const m = decodeURIComponent(location.hash).match(/^#sello=(F-[0-9A-Z-]{6,24})\.([A-Za-z0-9_-]{40,})$/);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const [, f, firma] = m;
+  let aviso;
+  if (!(await firmaValida(f, firma))) aviso = { ok: false, t: 'Este link de sello no es válido', p: 'Pídele a tu vendedor que te lo mande otra vez.' };
+  else {
+    const t = tarjeta();
+    if (t.usados.includes(f) || t.sellos.some(s => s.folio === f)) aviso = { ok: false, t: 'Este folio ya estaba sellado', p: `El folio ${f} ya está en tu tarjeta.` };
+    else {
+      const p = t.pendientes.find(x => x.folio === f);
+      t.pendientes = t.pendientes.filter(x => x.folio !== f);
+      t.sellos.push({ folio: f, fecha: hoyISO(), total: p ? p.total : 0 });
+      t.usados = [...t.usados, f].slice(-300);
+      const completa = t.sellos.length >= META;
+      if (completa) { t.sellos = []; t.canjes++; }
+      guardaTarjeta(t);
+      aviso = completa ? { ok: true, t: '🎉 ¡Completaste tu tarjeta!', p: 'Gracias por tus 8 compras. Ya empezaste una tarjeta nueva.' }
+        : { ok: true, t: '⭐ ¡Sello agregado!', p: `Gracias por tu pago del folio ${f}. Llevas ${t.sellos.length} de ${META}.` };
+    }
+  }
+  const dl = document.querySelector('dialog[open]'); if (dl) dl.close();
+  renderTarjeta(aviso); $('#dlgTarjeta').showModal(); vibra(aviso.ok ? [12, 40, 18] : 20);
 }
 function renderSellos() {   // contador en la barra de abajo
   const n = tarjeta().sellos.length;
   $('#sellosNav').hidden = !n; $('#sellosNav').textContent = n;
 }
-function renderTarjeta() {
+const fechaCorta = f => f ? new Date(f + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
+function renderTarjeta(aviso) {
   const t = tarjeta(), n = t.sellos.length, faltan = META - n;
+  $('#tjAviso').hidden = !aviso;
+  $('#tjAviso').className = 'tj-aviso' + (aviso && !aviso.ok ? ' mal' : '');
+  $('#tjAviso').innerHTML = aviso ? `<b>${esc(aviso.t)}</b><span>${esc(aviso.p)}</span>` : '';
   $('#tarjetaCard').innerHTML = `<div class="tj-top"><img src="img/logo/logo-96.png" alt="" width="40" height="40"><div><b>Tarjeta de fidelidad</b><small>Distribuidor Independiente Fraiche</small></div></div>
     <div class="tj-sellos">${Array.from({ length: META }, (_, i) => {
       const lleno = i < n, premio = i === META - 1;
@@ -660,10 +706,12 @@ function renderTarjeta() {
     }).join('')}</div>
     ${t.canjes ? `<small class="tj-canjes">Tarjetas completadas: ${t.canjes}</small>` : ''}`;
   $('#tjEstado').innerHTML = faltan === 1 ? '🎉 <b>¡Tu próxima compra tiene 10% de descuento!</b>'
-    : n ? `Llevas <b>${n} de ${META}</b> compras. Te faltan <b>${faltan - 1}</b> para tu descuento del 10% en la 8ª.`
-      : `Aún no tienes sellos. Haz tu primer pedido y empieza a juntar: en tu <b>8ª compra</b> tienes <b>10% de descuento</b>.`;
-  $('#tjHist').innerHTML = n ? `<b>Tus compras en esta tarjeta</b><ul>${t.sellos.map((s, i) =>
-    `<li><span>${i + 1}. Folio ${esc(s.folio)}</span><span>${s.fecha ? new Date(s.fecha + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : ''}${s.total ? ' · ' + money(s.total) : ''}</span></li>`).join('')}</ul>` : '';
+    : n ? `Llevas <b>${n} de ${META}</b> compras pagadas. Te faltan <b>${faltan - 1}</b> para tu descuento del 10% en la 8ª.`
+      : `Aún no tienes sellos. Cuando confirme el pago de tu pedido te mando tu sello por WhatsApp. En tu <b>8ª compra</b> tienes <b>10% de descuento</b>.`;
+  $('#tjHist').innerHTML = (t.pendientes.length ? `<b>Esperando confirmación de pago</b><ul class="pend">${t.pendientes.map(p =>
+      `<li><span>Folio ${esc(p.folio)}</span><span>${fechaCorta(p.fecha)}${p.total ? ' · ' + money(p.total) : ''}</span></li>`).join('')}</ul>` : '')
+    + (n ? `<b>Compras selladas en esta tarjeta</b><ul>${t.sellos.map((s, i) =>
+      `<li><span>${i + 1}. Folio ${esc(s.folio)}</span><span>${fechaCorta(s.fecha)}${s.total ? ' · ' + money(s.total) : ''}</span></li>`).join('')}</ul>` : '');
 }
 const porConfirmar = () => cart.some(it => unitario(it) == null);
 function saveCart() { store.set('fr_cart', cart); renderCount(); }
@@ -698,7 +746,7 @@ function renderCart() {
   $('#lineas').hidden = !d;
   $('#lineas').innerHTML = d ? `<div><span>Productos</span><span>${money(subtotal())}</span></div><div class="desc"><span>Tarjeta de fidelidad · 8ª compra −10%</span><span>−${money(d)}</span></div>` : '';
   $('#tarjetaNota').innerHTML = tocaDescuento() ? '🎉 Es tu <b>8ª compra</b>: ya tiene tu <b>10% de descuento</b>.'
-    : `Con este pedido sumas tu sello <b>${compraNum()} de ${META}</b>. En la 8ª compra tienes 10% de descuento.`;
+    : `Cuando confirme tu pago te mando tu sello <b>${compraNum()} de ${META}</b> por WhatsApp. En la 8ª compra tienes 10% de descuento.`;
   $('#enviar').disabled = !WHATSAPP;
   $('#waNota').textContent = WHATSAPP ? 'Se abre WhatsApp con tu pedido escrito. Te confirmo existencias, pago y entrega.'
     : 'Pronto podrás mandar tu pedido por WhatsApp desde aquí.';
@@ -788,6 +836,12 @@ document.addEventListener('click', e => {
     vibra(8); return;
   }
   if (t.dataset.repetir) { repetirPedido(); return; }
+  if (t.dataset.copiar) {
+    const listo = () => { toast('CLABE copiada'); t.textContent = '¡Copiada!'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(t.dataset.copiar).then(listo, () => toast(t.dataset.copiar));
+    else toast(t.dataset.copiar);
+    return;
+  }
   if (t.dataset.aroma) {
     aromaSel = AROMAS[+t.dataset.aroma];
     // frasco nuevo: se elige solo el frasco de dama o de caballero según el aroma
@@ -884,6 +938,17 @@ $('#enviar').addEventListener('click', () => {
   abrirWhats(ultimoMensaje);
   pedidoRealizado(ent);
 });
+// datos de pago (ajustes.js → pago): solo salen en la confirmación, después de hacer el pedido
+const PAGO = AJ.pago || {};
+const clabePago = () => String(PAGO.clabe || '').replace(/\D/g, '');
+function renderPago() {
+  const c = clabePago();
+  $('#okPago').hidden = !c;
+  $('#okPago').innerHTML = c ? `<b>¿Cómo pagar?</b><p>En efectivo al recibir tu pedido, o por transferencia:</p>
+    <div class="clabe"><div>${PAGO.banco ? `<small>${esc(PAGO.banco)}</small>` : ''}<span>CLABE <b>${c.replace(/(\d{4})(?=\d)/g, '$1 ')}</b></span>
+      ${PAGO.titular ? `<small>A nombre de ${esc(PAGO.titular)}</small>` : ''}</div><button type="button" class="copiar" data-copiar="${c}">Copiar CLABE</button></div>
+    <p class="small">Mándame tu comprobante por WhatsApp con tu folio <b>${esc(folio)}</b> y te mando tu sello.</p>` : '';
+}
 // ventana de confirmación: folio, resumen y cómo se acuerda la entrega
 function pedidoRealizado(ent) {
   const n = cart.reduce((a, it) => a + it.cant, 0);
@@ -893,9 +958,10 @@ function pedidoRealizado(ent) {
   $('#okEntrega').innerHTML = ent.envio
     ? `<b>Punto de encuentro</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp te confirmo el punto de encuentro, la fecha y la hora.</p>`
     : `<b>Pasas a recoger</b><p class="small">Por WhatsApp te avisamos cuándo está listo tu pedido y dónde recogerlo.</p>`;
-  $('#okSello').innerHTML = tocaDescuento() ? '🎉 <b>¡Completaste tu tarjeta!</b> Este pedido lleva 10% de descuento y empiezas una tarjeta nueva.'
-    : `⭐ Ganaste un sello: llevas <b>${compraNum()} de ${META}</b> en tu tarjeta de fidelidad.`;
-  sellar();
+  $('#okSello').innerHTML = (tocaDescuento() ? '🎉 Este pedido lleva tu <b>10% de descuento</b> de la tarjeta de fidelidad. ' : '⭐ ')
+    + `Cuando confirme tu pago te mando tu sello <b>${compraNum()} de ${META}</b> por WhatsApp para tu tarjeta.`;
+  renderPago();
+  registraPedido();
   $('#dlgCarrito').close();
   cart = []; saveCart();
   $('#dlgOk').showModal();
@@ -1029,7 +1095,7 @@ function repetirPedido() {
 
 /* ---------- tu negocio y reseñas (ajustes.js) ---------- */
 function renderNegocio() {
-  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
+  const n = AJ.negocio || {}, filas = [['Horario', n.horario], ['Pago', clabePago() ? 'En efectivo al recibir o por transferencia. Los datos para transferir te salen al hacer tu pedido.' : ''], ['Zona de entrega', n.zona], ['Dónde', n.direccion]].filter(([, v]) => v);
   const mapa = n.mapa && /^https:\/\//.test(n.mapa) ? `<a class="mas" href="${esc(n.mapa)}" target="_blank" rel="noopener">Ver en el mapa</a>` : '';
   $('#negocio').hidden = !filas.length && !mapa;
   $('#negocio').innerHTML = filas.map(([k, v]) => `<div><b>${k}</b><span>${esc(v)}</span></div>`).join('') + mapa;
@@ -1043,6 +1109,7 @@ function renderNegocio() {
 
 /* ---------- arranque ---------- */
 renderHero(); renderCats(); renderGrid(); renderCount(); renderNegocio(); renderSellos(); startAutoplay();
+recibeSello(); window.addEventListener('hashchange', recibeSello);
 // bienvenida: solo la primera vez que alguien abre la tienda en ese celular
 $('#dlgBienvenida').addEventListener('close', () => store.set('fr_bienvenida', true));
 if (!store.get('fr_bienvenida', false)) setTimeout(() => { if (!document.querySelector('dialog[open]')) $('#dlgBienvenida').showModal(); }, 700);

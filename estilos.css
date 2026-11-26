@@ -626,3 +626,19 @@ button:active:not(:disabled),label.opt:active,label.var:active{transform:scale(.
 @media (prefers-reduced-motion:reduce){
   .tarjeta,.tarjeta::after,.tj-s.lleno,.bienvenida[open],.bv-logo,.bv-kick,.bienvenida h2,.bv-sub,.bv-pasos li,#bvEmpezar,#bvQuiz,.ok-sello{animation:none}
 }
+
+/* pago por transferencia en la confirmación */
+.ok-pago{width:100%;text-align:left;padding:12px 14px;border-radius:var(--r-md);background:var(--glass);border:1px solid var(--line);animation:aparece .5s .8s both}
+.ok-pago p{margin:4px 0;font-size:14px}
+.clabe{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 10px;margin:6px 0;padding:10px 12px;border-radius:12px;background:var(--accent-soft)}
+.clabe div{display:flex;flex-direction:column;min-width:0}
+.clabe small{color:var(--muted);font-size:12px}
+.clabe span{font-size:14px}.clabe b{font-size:15.5px;letter-spacing:.02em;white-space:nowrap}
+.copiar{flex:none;border:0;border-radius:99px;padding:9px 12px;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:13px}
+/* aviso al recibir un sello */
+.tj-aviso{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:var(--r-md);background:#e6f6ea;color:#1d5a2e;animation:aparece .4s both}
+.tj-aviso.mal{background:#fdecea;color:#a3261b}
+.tj-aviso b{font-size:16px}
+.tj-hist ul.pend li{background:#fff7e0;color:#7a5a10}
+.tj-hist > b{display:block;margin-top:10px;font-size:14px}
+@media (prefers-reduced-motion:reduce){.ok-pago,.tj-aviso{animation:none}}

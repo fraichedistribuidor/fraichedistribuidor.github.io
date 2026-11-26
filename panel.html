@@ -36,12 +36,41 @@
   .salida{position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--line)}
   ol{margin:6px 0 0;padding-left:20px}
   .ok{color:var(--accent);font-weight:700}
+  .sub{font-size:16px;margin:18px 0 6px}
+  .aviso{border-color:#e2a516;background:#fff7e0}
+  .error{color:#a3261b;font-weight:600}
+  .cli{display:block}
+  .cli summary{display:flex;justify-content:space-between;gap:8px;align-items:center;cursor:pointer;list-style:none}
+  .cli ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+  .cli li{display:flex;justify-content:space-between;font-size:13px;padding:6px 8px;border-radius:8px;background:var(--bg)}
+  .carga{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-weight:600;cursor:pointer;margin-left:6px}
+  textarea[readonly]{min-height:64px;font-size:12px;word-break:break-all}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><img src="img/logo/logo-96.png" alt=""><div><h1>Panel de la tienda</h1><div class="nota" style="margin:0">Cambia horario, agotados, precios, promociones y reseñas sin tocar el código.</div></div></header>
+  <header><img src="img/logo/logo-96.png" alt=""><div><h1>Panel de la tienda</h1><div class="nota" style="margin:0">Sella compras, y cambia agotados, precios, promociones y reseñas sin tocar el código.</div></div></header>
   <p class="nota">Este panel no cambia la página por sí solo: al terminar, descarga el archivo <b>ajustes.js</b> y súbelo a GitHub (abajo vienen los pasos). Si alguien más abre esta página, no puede cambiar nada de tu tienda.</p>
+
+  <section id="secSellos">
+    <h2>Sellar compras (tarjeta de fidelidad)</h2>
+    <p class="nota">Cuando un cliente te pague (efectivo o transferencia), escribe el folio de su pedido y toca “Sellar”. Se abre WhatsApp con su link de sello; al abrirlo, se marca en su tarjeta. Solo este panel puede crear sellos válidos.</p>
+    <div id="llaveBox"></div>
+    <div id="sellarBox">
+      <div class="fila"><div><label for="sFolio">Folio del pedido</label><input id="sFolio" placeholder="F-261126-1435-7K3Q" autocapitalize="characters" autocomplete="off"></div></div>
+      <div class="fila"><div><label for="sCliente">Nombre del cliente</label><input id="sCliente" placeholder="Ana García" list="clientesLista" autocomplete="off"></div>
+        <div><label for="sTel">WhatsApp del cliente (opcional)</label><input id="sTel" type="tel" inputmode="numeric" placeholder="55 1234 5678"></div></div>
+      <p class="fila"><button class="pri" id="sSellar">Sellar y mandar por WhatsApp</button></p>
+      <div id="sResultado"></div>
+    </div>
+    <h3 class="sub">Tus clientes y sus sellos</h3>
+    <input id="sBusca" type="search" placeholder="Buscar cliente o folio">
+    <div id="sLista"></div>
+    <p class="fila"><button id="respaldo">Descargar respaldo (llave y sellos)</button>
+      <label class="carga">Cargar respaldo<input type="file" id="cargaRespaldo" accept="application/json,.json" hidden></label></p>
+    <p class="nota">Guarda el respaldo en un lugar seguro (por ejemplo, Google Drive). Si cambias de celular o borras el navegador, con él recuperas tu llave y tu lista de sellos. <b>No lo compartas:</b> con tu llave cualquiera podría crear sellos.</p>
+  </section>
+  <datalist id="clientesLista"></datalist>
 
   <section>
     <h2>Tu negocio</h2>
@@ -129,12 +158,113 @@ const porId = Object.fromEntries(PRODS.map(p => [p.id, p]));
 $('#prodIds').innerHTML = PRODS.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
 
 const base = Object.assign({ negocio: {}, agotados: [], precios: {}, promociones: [], resenas: [] }, window.AJUSTES || {});
-let A = store.get('fr_panel') || JSON.parse(JSON.stringify(base));
+// lo guardado en este navegador, sobre lo que trae ajustes.js (así no se pierden campos nuevos como pago o llaveSellos)
+let A = Object.assign(JSON.parse(JSON.stringify(base)), store.get('fr_panel') || {});
+if (!A.pago && base.pago) A.pago = base.pago;
+if (!A.llaveSellos && base.llaveSellos) A.llaveSellos = base.llaveSellos;
 // lo que el panel no edita (horas ocupadas) se conserva de ajustes.js
 A.negocio = { ...A.negocio };
 if (!A.negocio.ocupado && (base.negocio || {}).ocupado) A.negocio.ocupado = base.negocio.ocupado;
 if (!A.negocio.horario && (base.negocio || {}).horario) A.negocio.horario = base.negocio.horario;
 const guarda = () => { store.set('fr_panel', A); $('#msg').textContent = ''; };
+
+// ---- sellos de la tarjeta de fidelidad ----
+// La llave privada se queda solo en este navegador (y en tu respaldo). La pública va en ajustes.js → llaveSellos.
+const URL_TIENDA = 'https://fraichedistribuidor.github.io/';
+const FOLIO_RE = /^F-\d{6}-\d{4}(-[2-9A-HJKMNP-Z]{4})?$/;
+const META = 8;
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const hoy = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const clave = s => norm(s).replace(/\s+/g, ' ').trim();
+let llave = store.get('fr_llave');
+let sellados = store.get('fr_sellados') || [];
+const guardaSellados = () => store.set('fr_sellados', sellados);
+const activa = () => llave && window.AJUSTES && AJUSTES.llaveSellos && AJUSTES.llaveSellos.x === llave.publica.x && AJUSTES.llaveSellos.y === llave.publica.y;
+function renderLlave() {
+  $('#sellarBox').hidden = !llave;
+  if (!llave) {
+    $('#llaveBox').innerHTML = `<div class="item aviso"><span><b>Paso único: crea tu llave de sellos</b><br><small>Se guarda solo en este navegador. Luego hay que activarla en tu página (te digo cómo).</small></span><button class="pri" id="crearLlave">Crear mi llave</button></div>`;
+    return;
+  }
+  $('#llaveBox').innerHTML = activa() ? '<p class="ok">✔ Tu llave de sellos está activa en tu página.</p>'
+    : `<div class="item aviso" style="display:block"><b>Falta activar tu llave en la página</b>
+      <p class="nota">Copia este texto y mándaselo a Claude por el chat (o descarga ajustes.js y súbelo a GitHub). Es la parte pública de tu llave: no es secreta. Mientras no esté activa, los links de sello no funcionan.</p>
+      <textarea readonly id="llavePub">${esc(JSON.stringify(llave.publica))}</textarea><p><button id="copiaLlave">Copiar llave pública</button></p></div>`;
+}
+async function firma(folio) {
+  const k = await crypto.subtle.importKey('jwk', llave.privada, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  return b64u(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, k, new TextEncoder().encode('fraiche-sello|' + folio)));
+}
+// clientes: cuántas compras selladas lleva cada uno y en qué va su tarjeta
+function clientes() {
+  const g = {};
+  for (const s of sellados) { const k = clave(s.cliente); (g[k] = g[k] || { nombre: s.cliente, tel: s.tel, sellos: [] }).sellos.push(s); }
+  return Object.values(g).sort((a, b) => (b.sellos[0].fecha || '').localeCompare(a.sellos[0].fecha || ''));
+}
+const enTarjeta = n => n % META || (n ? META : 0);   // 1…8 en la tarjeta actual
+function renderClientes() {
+  const txt = norm($('#sBusca').value.trim());
+  const l = clientes().filter(c => !txt || norm(c.nombre).includes(txt) || c.sellos.some(s => norm(s.folio).includes(txt)));
+  $('#clientesLista').innerHTML = clientes().map(c => `<option value="${esc(c.nombre)}">`).join('');
+  $('#sLista').innerHTML = l.length ? l.map(c => {
+    const n = c.sellos.length, t = enTarjeta(n);
+    const estado = n % META === META - 1 ? '<span class="chip">🎉 Su próxima compra lleva 10%</span>'
+      : n % META === 0 ? `<span class="chip">✔ Completó ${n / META} tarjeta${n / META > 1 ? 's' : ''}</span>` : '';
+    return `<details class="item cli"><summary><span><b>${esc(c.nombre)}</b> <small>${t} de ${META} en su tarjeta · ${n} compra${n === 1 ? '' : 's'} selladas</small></span>${estado}</summary>
+      <ul>${c.sellos.map(s => `<li><span>${esc(s.folio)}</span><small>${esc(s.fecha)}</small></li>`).join('')}</ul></details>`;
+  }).join('') : `<p class="nota">${sellados.length ? 'Nadie coincide con tu búsqueda.' : 'Aún no has sellado compras.'}</p>`;
+}
+$('#sBusca').addEventListener('input', renderClientes);
+$('#sCliente').addEventListener('change', () => {   // si ya es cliente, llena su WhatsApp
+  const c = clientes().find(x => clave(x.nombre) === clave($('#sCliente').value));
+  if (c && c.tel && !$('#sTel').value) $('#sTel').value = c.tel;
+});
+$('#sSellar').addEventListener('click', async () => {
+  const folio = $('#sFolio').value.trim().toUpperCase().replace(/\s+/g, ''), cliente = $('#sCliente').value.trim(), tel = $('#sTel').value.replace(/\D/g, '');
+  if (!FOLIO_RE.test(folio)) { $('#sResultado').innerHTML = '<p class="error">Revisa el folio: debe verse como F-261126-1435-7K3Q (viene en el pedido de WhatsApp).</p>'; $('#sFolio').focus(); return; }
+  if (!cliente) { $('#sResultado').innerHTML = '<p class="error">Escribe el nombre del cliente, para llevar su cuenta.</p>'; $('#sCliente').focus(); return; }
+  const ya = sellados.find(s => s.folio === folio);
+  if (ya && !confirm(`Ese folio ya lo sellaste el ${ya.fecha} para ${ya.cliente}. ¿Mandar el link otra vez? (no cuenta como otro sello)`)) return;
+  const link = `${URL_TIENDA}#sello=${folio}.${await firma(folio)}`;
+  if (!ya) { sellados.unshift({ folio, cliente, tel, fecha: hoy() }); guardaSellados(); }
+  const quien = ya ? ya.cliente : cliente, n = sellados.filter(s => clave(s.cliente) === clave(quien)).length;
+  const texto = `¡Gracias por tu compra, ${quien}! ✅ Confirmé tu pago del pedido ${folio}.\nAbre este link para agregar tu sello a tu tarjeta de fidelidad:\n${link}`;
+  $('#sResultado').innerHTML = `<div class="item" style="display:block"><b>Sello listo · ${esc(quien)} lleva ${enTarjeta(n)} de ${META}</b>
+    ${n % META === META - 1 ? '<p class="ok">Su próxima compra lleva 10% de descuento.</p>' : ''}
+    <p class="nota">Si no se abrió WhatsApp, copia el link y mándaselo:</p><textarea readonly id="sLink">${esc(link)}</textarea></div>`;
+  const num = tel.length === 10 ? '52' + tel : tel;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+  $('#sFolio').value = ''; renderClientes();
+});
+document.addEventListener('click', async e => {
+  if (e.target.id === 'crearLlave') {
+    if (!window.crypto || !crypto.subtle) { alert('Este navegador no puede crear la llave. Ábrelo en Chrome.'); return; }
+    const par = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const priv = await crypto.subtle.exportKey('jwk', par.privateKey), pub = await crypto.subtle.exportKey('jwk', par.publicKey);
+    llave = { privada: priv, publica: { x: pub.x, y: pub.y } }; store.set('fr_llave', llave);
+    A.llaveSellos = { ...llave.publica }; guarda(); renderLlave();
+  }
+  if (e.target.id === 'copiaLlave') {
+    try { await navigator.clipboard.writeText($('#llavePub').value); e.target.textContent = '¡Copiada!'; } catch (x) { $('#llavePub').select(); }
+  }
+});
+$('#respaldo').addEventListener('click', () => {
+  if (!llave) { alert('Primero crea tu llave de sellos.'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ tipo: 'respaldo-sellos-fraiche', fecha: hoy(), llave, sellados }, null, 1)], { type: 'application/json' }));
+  a.download = `respaldo-sellos-${hoy()}.json`; a.click(); URL.revokeObjectURL(a.href);
+});
+$('#cargaRespaldo').addEventListener('change', async e => {
+  try {
+    const r = JSON.parse(await e.target.files[0].text());
+    if (r.tipo !== 'respaldo-sellos-fraiche' || !r.llave || !r.llave.privada) throw new Error();
+    llave = r.llave; store.set('fr_llave', llave);
+    const folios = new Set(sellados.map(s => s.folio));
+    sellados = [...sellados, ...(r.sellados || []).filter(s => !folios.has(s.folio))]; guardaSellados();
+    A.llaveSellos = { ...llave.publica }; guarda(); renderLlave(); renderClientes(); alert('Respaldo cargado.');
+  } catch (x) { alert('Ese archivo no es un respaldo de sellos.'); }
+});
+renderLlave(); renderClientes();
 
 // ---- negocio ----
 for (const k of ['horario', 'zona', 'direccion', 'mapa']) {
@@ -223,7 +353,7 @@ $('#copiar').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(archivo()); $('#msg').textContent = 'Copiado'; } catch (e) { $('#msg').textContent = 'No se pudo copiar; usa Descargar'; }
 });
 renderAgotados(); renderPrecios(); renderPromos(); renderResenas();
-window.panel = { archivo, get A() { return A; } };   // usado por las pruebas
+window.panel = { archivo, get A() { return A; }, get sellados() { return sellados; }, get llave() { return llave; } };   // usado por las pruebas
 </script>
 </body>
 </html>
