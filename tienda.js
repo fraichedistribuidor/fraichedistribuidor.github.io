@@ -726,8 +726,8 @@ function mensaje() {
     `*Total: ${money(total())}${porConfirmar() ? ' + productos por confirmar' : ''}*`, '',
     `Tarjeta de fidelidad: compra ${compraNum()} de ${META}${d ? ' 🎉' : ''}`,
     d && previos.length ? `Mis compras anteriores: ${previos.join(', ')}` : null, '',
-    nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Envío a domicilio' : 'Paso a recoger'}`,
-    ent.envio && ent.lugar ? `Lugar de entrega: ${ent.lugar}` : null,
+    nombre ? `Nombre: ${nombre}` : null, `Entrega: ${ent.envio ? 'Punto de encuentro' : 'Paso a recoger'}`,
+    ent.envio && ent.lugar ? `Punto de encuentro: ${ent.lugar}` : null,
     ent.envio && cuando ? `Fecha y hora que prefiero: ${cuando}` : null,
     notas ? `Notas: ${notas}` : null].filter(x => x !== null).join('\n');
 }
@@ -872,7 +872,7 @@ const abrirWhats = m => window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIC
 $('#enviar').addEventListener('click', () => {
   if (!WHATSAPP || !cart.length) return;
   const ent = entregaDatos();
-  if (ent.envio && !ent.lugar) { toast('Escribe el lugar de entrega'); $('#cDir').focus(); return; }
+  if (ent.envio && !ent.lugar) { toast('Escribe dónde nos vemos'); $('#cDir').focus(); return; }
   if (ent.envio && horaOcupada()) { toast('A esa hora no hay entregas; elige otra'); $('#cHora').focus(); return; }
   folio = nuevoFolio();
   ultimoMensaje = mensaje();
@@ -887,7 +887,7 @@ function pedidoRealizado(ent) {
   $('#okResumen').innerHTML = `<span>${n} ${n === 1 ? 'producto' : 'productos'}</span><b>${money(total())}${porConfirmar() ? ' + por confirmar' : ''}</b>`;
   const cuando = [fechaBonita(ent.fecha), ent.hora ? ent.hora + ' h' : ''].filter(Boolean).join(' a las ');
   $('#okEntrega').innerHTML = ent.envio
-    ? `<b>Envío a domicilio</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp acordamos contigo el lugar, la fecha y la hora exactos de la entrega.</p>`
+    ? `<b>Punto de encuentro</b><p>${esc(ent.lugar)}${cuando ? `<br>${esc(cuando)}` : ''}</p><p class="small">Por WhatsApp te confirmo el punto de encuentro, la fecha y la hora.</p>`
     : `<b>Pasas a recoger</b><p class="small">Por WhatsApp te avisamos cuándo está listo tu pedido y dónde recogerlo.</p>`;
   $('#okSello').innerHTML = tocaDescuento() ? '🎉 <b>¡Completaste tu tarjeta!</b> Este pedido lleva 10% de descuento y empiezas una tarjeta nueva.'
     : `⭐ Ganaste un sello: llevas <b>${compraNum()} de ${META}</b> en tu tarjeta de fidelidad.`;

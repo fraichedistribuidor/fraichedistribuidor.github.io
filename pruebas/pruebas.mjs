@@ -601,8 +601,8 @@ await prueba('pedido con envío: pide lugar, manda fecha y hora, y muestra "Pedi
   assert.equal(sinLugar, 0, 'no debe enviar sin lugar de entrega');
   assert.ok(url.startsWith('https://wa.me/525574348740?text='), url);
   assert.ok(aviso.includes('estoy en clases') && enClase === 0 && sinAviso, `${aviso} · ${enClase} · ${sinAviso}`);
-  assert.ok(msg.includes('Lugar de entrega: Av. Juárez 10, Centro') && /viernes, 17 de mayo, 12:30 h/.test(msg) && /\(F-\d{6}-\d{4}\)/.test(msg), msg);
-  assert.ok(ok.includes('¡Pedido realizado!') && ok.includes('Av. Juárez 10') && ok.includes('acordamos contigo el lugar, la fecha y la hora'), ok);
+  assert.ok(msg.includes('Entrega: Punto de encuentro') && msg.includes('Punto de encuentro: Av. Juárez 10, Centro') && /viernes, 17 de mayo, 12:30 h/.test(msg) && /\(F-\d{6}-\d{4}\)/.test(msg), msg);
+  assert.ok(ok.includes('¡Pedido realizado!') && ok.includes('Av. Juárez 10') && ok.includes('Punto de encuentro') && ok.includes('te confirmo el punto de encuentro'), ok);
   assert.equal(carrito, 0);
   assert.deepEqual(errors, []);
 });
