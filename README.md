@@ -30,7 +30,7 @@ En *Rellenos*, **Relleno de perfume a tu medida** es para clientes con frasco de
 
 ## Panel (sin tocar código)
 
-Abre `panel.html` (por ejemplo `https://romerovazquezricardorv-netizen.github.io/P-gina-web-fraiche-/panel.html`). Ahí cambias:
+Abre `panel.html` (por ejemplo `https://fraichedistribuidor.github.io/panel.html`). Ahí cambias:
 - **Tu negocio**: horario, zona de entrega, punto de entrega y mapa (salen en "Cómo pedir").
 - **Agotados**: todo un producto o una sola opción; en la tienda sale "Agotado" y no se puede pedir.
 - **Precios**: cambia el precio de cualquier producto.
@@ -96,7 +96,7 @@ Sin foto se ve el dibujo del producto.
 
 ## Publicar en GitHub Pages
 
-*Settings > Pages* > rama `main`, carpeta `/ (root)` > *Save*. La tienda queda en `https://TU-USUARIO.github.io/tienda-fraiche/`.
+*Settings > Pages* > rama `main`, carpeta `/ (root)` > *Save*. La tienda está en `https://fraichedistribuidor.github.io/` (repositorio `fraichedistribuidor/fraichedistribuidor.github.io`).
 
 ## Pruebas (opcional)
 
