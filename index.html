@@ -272,6 +272,14 @@
   </form>
 </dialog>
 
+<dialog id="dlgVer" class="ver" aria-label="Fotos del producto">
+  <button type="button" class="ver-cerrar" id="verCerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="ver-tira" id="verTira"></div>
+  <div class="ver-pie"><div><b id="verNombre"></b><small id="verN"></small></div>
+    <button type="button" class="primary" id="verElegir">Elegir este</button></div>
+  <p class="ver-tip">Desliza para ver más · toca dos veces para acercar</p>
+</dialog>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="productos.js"></script>
@@ -280,5 +288,6 @@
 <script src="existencias.js"></script>
 <script src="ajustes.js"></script>
 <script src="tienda.js"></script>
+<script src="efectos.js"></script>
 </body>
 </html>

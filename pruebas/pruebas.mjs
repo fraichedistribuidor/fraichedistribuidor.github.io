@@ -595,6 +595,36 @@ await prueba('tarjeta: en la 8ª compra hay 10% de descuento con folios anterior
   assert.deepEqual(errors, []);
 });
 
+await prueba('efectos: vista previa de fotos (deslizar y elegir), frasco que se llena, aviso con palomita y encabezado que se encoge', async () => {
+  const { ctx, page, errors } = await abrir({ calma: false });
+  await page.click('.cat[data-cat="nuevo"]'); await page.waitForTimeout(500);
+  await page.click('.card .add[data-open="nuevo-60"]');
+  await page.click('#pMedia');
+  await page.waitForSelector('#dlgVer[open]');
+  const fotos = await page.locator('#verTira figure').count(), n1 = await page.textContent('#verN');
+  await page.evaluate(() => { const t = document.getElementById('verTira'); t.scrollLeft = t.clientWidth * 3; });
+  await page.waitForTimeout(300);
+  const nombre = await page.textContent('#verNombre');
+  await page.click('#verElegir');
+  const elegido = await page.textContent('#pVar .var:has(input:checked) .vn');
+  await page.click('#pAgregar');
+  const ok = await page.evaluate(() => document.getElementById('toast').classList.contains('ok'));
+  await page.click('.cat[data-cat="relleno"]'); await page.waitForTimeout(500);
+  await page.click('.card .add[data-open="relleno-medida"]');
+  await page.fill('#pMl', '120'); await page.waitForTimeout(100);
+  const lleno = await page.evaluate(() => document.getElementById('cfLiq').style.transform);
+  await page.evaluate(() => document.querySelectorAll('dialog[open]').forEach(d => d.close()));
+  await page.evaluate(() => scrollTo(0, 1600)); await page.waitForTimeout(300);
+  const chico = await page.evaluate(() => document.querySelector('.top').classList.contains('chico'));
+  await ctx.close();
+  assert.ok(fotos > 30 && n1.startsWith('1 de'), `${fotos} fotos, ${n1}`);
+  assert.equal(elegido, nombre, `elegido ${elegido} vs ${nombre}`);
+  assert.ok(ok, 'aviso con palomita');
+  assert.ok(/^scaleY\(1(\.0+)?\)$/.test(lleno), lleno);
+  assert.ok(chico, 'el encabezado se encoge al bajar');
+  assert.deepEqual(errors, []);
+});
+
 await prueba('al elegir esencia neeche, el buscador de aromas muestra solo aromas neeche', async () => {
   const { ctx, page } = await abrir();
   await page.click('.cat[data-cat="nuevo"]');

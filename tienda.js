@@ -410,7 +410,14 @@ function renderGrid(reset = true) {
     : vacio({ icono: 'buscar', titulo: q ? `No encontramos “${esc(q)}”` : 'No hay productos aquí', texto: 'Prueba con otra palabra o elige una de estas:', sugerir: true, cta: 'Ver todo el catálogo', ctaCat: 'todo' });
 }
 function setCat(id, scroll) {
-  cat = id; soloFavs = false; renderCats(); renderGrid(); setNav('categorias');
+  const i0 = CATS.findIndex(c => c.id === cat), i1 = CATS.findIndex(c => c.id === id), g = $('#grid'), cambia = id !== cat;
+  cat = id; soloFavs = false; renderCats(); setNav('categorias');
+  if (!cambia || calma()) renderGrid();
+  else {   // los productos salen hacia un lado y entran del otro
+    g.classList.remove('entra-der', 'entra-izq'); g.classList.add('sale', i1 >= i0 ? 'sale-izq' : 'sale-der');
+    clearTimeout(setCat.t);
+    setCat.t = setTimeout(() => { g.classList.remove('sale', 'sale-izq', 'sale-der'); renderGrid(); g.classList.add(i1 >= i0 ? 'entra-der' : 'entra-izq'); }, 170);
+  }
   if (scroll) $('#productos').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -433,7 +440,9 @@ function openProduct(id, op = {}) {
   const leyenda = conGen ? `Elige tu frasco <small>${p.var.length} envases de ${p.ml} ml</small>`
     : muchos ? `Elige una opción <small>${p.var.length} diseños${nEx ? ` · ${nEx} en existencia` : ''}</small>` : p.var && p.var.length > 1 ? 'Elige una opción' : 'Opción';
   $('#pVar').innerHTML = p.medida ? `<legend>¿Cuántos ml tiene tu frasco?</legend>
-    <div class="medida"><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
+    <div class="medida"><span class="calc-frasco" aria-hidden="true"><svg viewBox="0 0 48 76"><defs><clipPath id="cfForma"><path d="M18 2h12v9l7 7v50a6 6 0 0 1-6 6H17a6 6 0 0 1-6-6V18l7-7z"/></clipPath></defs>
+      <g clip-path="url(#cfForma)"><rect id="cfLiq" class="cf-liq" x="0" y="0" width="48" height="76"/><circle class="cf-burbuja" cx="20" cy="64" r="2"/><circle class="cf-burbuja b2" cx="29" cy="68" r="1.5"/></g>
+      <path class="cf-borde" d="M18 2h12v9l7 7v50a6 6 0 0 1-6 6H17a6 6 0 0 1-6-6V18l7-7z"/></svg></span><input id="pMl" type="number" inputmode="numeric" min="${ML_MIN}" max="${ML_MAX}" step="1" value="${ML_MIN + vSel}" aria-label="Mililitros de tu frasco"><span>ml</span></div>
     <p class="small">Desde ${ML_MIN} ml. Viene en la etiqueta o en la base del frasco; si no sabes, pon uno aproximado y lo medimos al rellenarlo.</p>
     <label class="fld" for="pFrasco">¿Es un frasco Fraiche? Elígelo y te digo su tamaño</label>
     <select id="pFrasco" class="vbusca"><option value="">No es Fraiche / no sé</option>${FRASCOS_FR.map(([ml, l]) =>
@@ -458,6 +467,7 @@ function openProduct(id, op = {}) {
 function renderCalc() {
   const box = $('#pCalc'); if (!box || !actual || !actual.medida) return;
   const ml = ML_MIN + vSel, pr = preciosDe(actual, vSel);
+  const liq = $('#cfLiq'); if (liq) liq.style.transform = `scaleY(${Math.max(.08, Math.min(ml / 120, 1)).toFixed(3)})`;
   box.innerHTML = `<span>Tu relleno de <b>${ml} ml</b></span><div>${ESENCIAS.filter(e => pr[e.id] != null)
     .map(e => `<span><small>${e.nombre.replace('Esencia ', '')}</small><b>${money(pr[e.id])}</b></span>`).join('')}</div>`;
 }
@@ -680,15 +690,18 @@ async function recibeSello() {
       t.pendientes = t.pendientes.filter(x => x.folio !== f);
       t.sellos.push({ folio: f, fecha: hoyISO(), total: p ? p.total : 0 });
       t.usados = [...t.usados, f].slice(-300);
-      const completa = t.sellos.length >= META;
+      const nuevo = t.sellos.length - 1, completa = t.sellos.length >= META;
       if (completa) { t.sellos = []; t.canjes++; }
       guardaTarjeta(t);
       aviso = completa ? { ok: true, t: '🎉 ¡Completaste tu tarjeta!', p: 'Gracias por tus 8 compras. Ya empezaste una tarjeta nueva.' }
-        : { ok: true, t: '⭐ ¡Sello agregado!', p: `Gracias por tu pago del folio ${f}. Llevas ${t.sellos.length} de ${META}.` };
+        : { ok: true, t: '⭐ ¡Sello agregado!', p: `Gracias por tu pago del folio ${f}. Llevas ${t.sellos.length} de ${META}.`, nuevo };
+      aviso.completa = completa;
     }
   }
   const dl = document.querySelector('dialog[open]'); if (dl) dl.close();
   renderTarjeta(aviso); $('#dlgTarjeta').showModal(); vibra(aviso.ok ? [12, 40, 18] : 20);
+  if (aviso.completa) setTimeout(fx.confeti, 350);
+  else if (aviso.nuevo != null) setTimeout(() => fx.chispas(document.querySelector('.tj-s.nuevo')), 750);
 }
 function renderSellos() {   // contador en la barra de abajo
   const n = tarjeta().sellos.length;
@@ -703,7 +716,7 @@ function renderTarjeta(aviso) {
   $('#tarjetaCard').innerHTML = `<div class="tj-top"><img src="img/logo/logo-96.png" alt="" width="40" height="40"><div><b>Tarjeta de fidelidad</b><small>Distribuidor Independiente Fraiche</small></div></div>
     <div class="tj-sellos">${Array.from({ length: META }, (_, i) => {
       const lleno = i < n, premio = i === META - 1;
-      return `<span class="tj-s${lleno ? ' lleno' : ''}${premio ? ' premio' : ''}" style="--i:${i}" aria-label="${premio ? 'Compra 8: 10% de descuento' : 'Compra ' + (i + 1)}${lleno ? ' (sellada)' : ''}">${lleno
+      return `<span class="tj-s${lleno ? ' lleno' : ''}${premio ? ' premio' : ''}${aviso && aviso.nuevo === i ? ' nuevo' : ''}" style="--i:${i}" aria-label="${premio ? 'Compra 8: 10% de descuento' : 'Compra ' + (i + 1)}${lleno ? ' (sellada)' : ''}">${lleno
         ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : premio ? '<b>10%</b>' : `<i>${i + 1}</i>`}</span>`;
     }).join('')}</div>
     ${t.canjes ? `<small class="tj-canjes">Tarjetas completadas: ${t.canjes}</small>` : ''}`;
@@ -826,7 +839,7 @@ addEventListener('scroll', () => {
     setNav($('#productos').getBoundingClientRect().top < innerHeight * .45 ? 'categorias' : 'inicio');
   });
 }, { passive: true });
-function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2200); }
+function toast(t, ok) { const el = $('#toast'); el.textContent = t; el.classList.toggle('ok', !!ok); el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2200); }
 
 /* ---------- eventos ---------- */
 document.addEventListener('click', e => {
@@ -852,7 +865,7 @@ document.addEventListener('click', e => {
       const i = actual.var.findIndex(v => v.n.startsWith(aromaSel.g));
       if (i >= 0 && i !== vSel) { vSel = i; const r = $(`#pVar input[value="${i}"]`); if (r) r.checked = true; renderVariante(); }
     }
-    renderAromas(); vibra(8); return;
+    renderAromas(); vibra(8); fx.rocio($('#pAromaSel .ficha') || $('#pMedia')); return;
   }
   if (t.id === 'cambiarAroma') { aromaSel = null; $('#pAroma').value = ''; renderAromas(); $('#pAroma').focus(); return; }
   if (t.dataset.gen) { aromaGen = t.dataset.gen; renderAromas(); return; }
@@ -880,12 +893,16 @@ document.addEventListener('click', e => {
   }
   if (t.id === 'mas') { mostrados += PAGINA; renderGrid(false); return; }
   const go = t.dataset.go;
-  if (go === 'carrito') { renderCart(); $('#dlgCarrito').showModal(); return; }
+  if (go === 'carrito') { abrirCarrito(); return; }
   if (go === 'favoritos') { soloFavs = true; setNav('favoritos'); renderCats(); renderGrid(); $('#productos').scrollIntoView({ behavior: 'smooth' }); return; }
   if (go === 'tarjeta') { renderTarjeta(); $('#dlgTarjeta').showModal(); return; }
   if (go === 'inicio' || go === 'categorias') { if (soloFavs) { soloFavs = false; renderCats(); renderGrid(); } setNav(go); }
 });
-$('#btnCarrito').addEventListener('click', () => { renderCart(); $('#dlgCarrito').showModal(); });
+function abrirCarrito() {
+  renderCart(); $('#dlgCarrito').showModal();
+  if (cart.length && tocaDescuento()) setTimeout(fx.confeti, 300);   // 8ª compra: 10% de descuento
+}
+$('#btnCarrito').addEventListener('click', abrirCarrito);
 $('#btnBuscar').addEventListener('click', () => {
   const box = $('#buscador'), open = box.hidden; box.hidden = !open; $('#btnBuscar').setAttribute('aria-expanded', open);
   if (open) $('#q').focus(); else if (q) { q = ''; $('#q').value = ''; renderGrid(); }
@@ -923,7 +940,7 @@ $('#formProducto').addEventListener('submit', e => {
   if (e.submitter && e.submitter.value === 'add') {
     addToCart(actual.id, vSel, esencia(), pideAroma(actual) ? aromaTexto() : '', cant);
     vuelaAlCarrito($('#pMedia'));
-    toast(`${actual.nombre} agregado al carrito`);
+    toast(`${actual.nombre} agregado al carrito`, true);
   }
 });
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));   // tocar fuera cierra
@@ -1023,7 +1040,10 @@ function vuelaAlCarrito(desde) {
   vibra(14);
   const metas = [$('#btnCarrito'), document.querySelector('.bottom [data-go="carrito"]')].filter(el => el && el.offsetParent);
   const meta = metas.find(el => el.getBoundingClientRect().top > 0 && getComputedStyle(el).display !== 'none') || metas[0];
-  const bump = () => document.querySelectorAll('.count').forEach(c => { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); });
+  const bump = () => {
+    document.querySelectorAll('#cuenta, #cuenta2').forEach(c => { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); });
+    document.querySelectorAll('#btnCarrito, .bottom [data-go="carrito"]').forEach(c => { c.classList.remove('late'); void c.offsetWidth; c.classList.add('late'); });
+  };
   if (!desde || !meta || calma()) return bump();
   const a = desde.getBoundingClientRect(), b = meta.getBoundingClientRect();
   const f = desde.cloneNode(true);
