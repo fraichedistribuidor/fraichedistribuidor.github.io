@@ -1128,3 +1128,30 @@ if (!store.get('fr_bienvenida', false)) setTimeout(() => { if (!document.querySe
 if (WHATSAPP) $('#waFlota').href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent('¡Hola! Tengo una pregunta sobre los productos Fraiche.')}`; else $('#waFlota').hidden = true;
 mueveGota(false); if (document.fonts) document.fonts.ready.then(() => mueveGota(false));
 window.tienda = { mensaje, P, AROMAS, parecidos, get cart() { return cart; } };   // usado por las pruebas
+
+/* ---------- vidrio líquido: brillo que sigue el dedo y secciones que aparecen al bajar ---------- */
+(function vidrio() {
+  const BRILLO = '.card, .acard';
+  let actual = null;
+  const mueve = e => {
+    const el = e.target.closest && e.target.closest(BRILLO);
+    if (actual && actual !== el) actual.classList.remove('luz');
+    actual = el;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    el.classList.add('luz');
+  };
+  document.addEventListener('pointermove', mueve, { passive: true });
+  document.addEventListener('pointerdown', mueve, { passive: true });
+  document.addEventListener('pointerleave', () => { if (actual) actual.classList.remove('luz'); actual = null; });
+  document.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse' && actual) { const a = actual; setTimeout(() => a.classList.remove('luz'), 350); } }, { passive: true });
+
+  // aparecer al bajar (no en los productos, que ya tienen su animación)
+  if (calma() || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(es => es.forEach(x => { if (x.isIntersecting) { x.target.classList.add('visto'); io.unobserve(x.target); } }),
+    { rootMargin: '0px 0px -8% 0px', threshold: .08 });
+  document.querySelectorAll('.quiz-cta, #como > h2, .steps li, .esencias > div, .relleno-tip, .negocio, .resenas, .foot .wrap')
+    .forEach((el, i) => { el.classList.add('revela'); el.style.transitionDelay = `${(i % 4) * 70}ms`; io.observe(el); });
+})();
